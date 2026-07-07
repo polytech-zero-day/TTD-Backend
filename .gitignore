@@ -38,3 +38,5 @@ out/
 
 ### Claude Harness ###
 .claude/
+
+.env
