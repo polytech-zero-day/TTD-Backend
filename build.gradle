@@ -38,6 +38,7 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
 	implementation 'org.springframework.boot:spring-boot-starter-amqp'
+	developmentOnly 'me.paulschwarz:springboot4-dotenv:5.1.0'
 }
 
 dependencyManagement {
