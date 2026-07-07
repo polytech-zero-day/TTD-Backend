@@ -1,0 +1,9 @@
+spring:
+  ai:
+    openai:
+      api-key: dummy-test-key
+
+app:
+  security:
+    aes-key: B6xehDNvYFyrogSA6fwwfHo4wAE5PjawK863JXVrdpc=
+    hmac-key: Fmxx4CypEG6kZ/EGGaPZvHRYLGEBTw44re7a5JFv38w=
