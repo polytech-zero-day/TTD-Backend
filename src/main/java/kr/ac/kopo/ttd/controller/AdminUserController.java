@@ -1,5 +1,6 @@
 package kr.ac.kopo.ttd.controller;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import kr.ac.kopo.ttd.common.ApiResponse;
 import kr.ac.kopo.ttd.dto.UserCreateRequest;
@@ -25,6 +26,7 @@ import java.util.List;
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+@SecurityRequirement(name = "basicAuth")
 public class AdminUserController {
 
     private final UserAdminService userAdminService;
