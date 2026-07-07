@@ -17,6 +17,7 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+    open-in-view: false
     properties:
       hibernate:
         format_sql: true
@@ -37,6 +38,13 @@ spring:
       api-key: ${OPENAI_API_KEY}
 
 app:
+  security:
+    aes-key: ${AES_SECRET_KEY}
+    hmac-key: ${HMAC_SECRET_KEY}
+  admin-init:
+    email: ${ADMIN_INIT_EMAIL:admin@ttd.local}
+    password: ${ADMIN_INIT_PASSWORD:admin1234!}
+    nickname: ${ADMIN_INIT_NICKNAME:admin}
   rabbitmq:
     exchange: ttd.sandbox.exchange
     queue:
