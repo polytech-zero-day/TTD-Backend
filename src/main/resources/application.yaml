@@ -1,3 +1,53 @@
 spring:
   application:
     name: ttd
+
+  datasource:
+    url: jdbc:h2:mem:ttd;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 1
+        default-requeue-rejected: false
+
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+
+app:
+  rabbitmq:
+    exchange: ttd.sandbox.exchange
+    queue:
+      execution: sandbox.execution.q
+      execution-retry: sandbox.execution.retry.q
+      execution-dlq: sandbox.execution.dlq
+      result: sandbox.result.q
+    routing-key:
+      execution-request: execution.request
+      execution-result: execution.result
+    retry:
+      max-attempts: 3
+      initial-interval-ms: 5000
+      multiplier: 2.0
