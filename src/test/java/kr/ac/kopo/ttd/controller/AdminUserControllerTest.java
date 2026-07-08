@@ -1,6 +1,9 @@
 package kr.ac.kopo.ttd.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import kr.ac.kopo.ttd.common.jwt.JwtProvider;
+import kr.ac.kopo.ttd.config.RestAccessDeniedHandler;
+import kr.ac.kopo.ttd.config.RestAuthenticationEntryPoint;
 import kr.ac.kopo.ttd.config.SecurityConfig;
 import kr.ac.kopo.ttd.domain.UserRole;
 import kr.ac.kopo.ttd.dto.UserCreateRequest;
@@ -25,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AdminUserController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, JwtProvider.class, RestAuthenticationEntryPoint.class, RestAccessDeniedHandler.class})
 class AdminUserControllerTest {
 
     @Autowired
