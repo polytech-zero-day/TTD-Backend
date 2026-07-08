@@ -12,4 +12,8 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
     List<Problem> findAllByStatus(ProblemStatus status);
 
     Optional<Problem> findByIdAndStatus(Long id, ProblemStatus status);
+
+    boolean existsByTitle(String title);
+
+    Optional<Problem> findByTitle(String title);
 }
