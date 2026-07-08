@@ -7,3 +7,7 @@ app:
   security:
     aes-key: B6xehDNvYFyrogSA6fwwfHo4wAE5PjawK863JXVrdpc=
     hmac-key: Fmxx4CypEG6kZ/EGGaPZvHRYLGEBTw44re7a5JFv38w=
+  jwt:
+    secret-key: R5434EzT7VqYYVQR1BJ0K5PFRqnM29VgkDryz92sFeo=
+    access-token-ttl-minutes: 30
+    refresh-token-ttl-days: 14
