@@ -8,6 +8,8 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.ai.openai.OpenAiChatModel.ResponseFormat;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -47,21 +49,37 @@ public class AiClient {
 
     /** 대화 이력 전체를 넘겨 다음 응답을 받는다. history 는 오래된 순. */
     public AiChatResult chat(String systemPrompt, List<Message> history) {
-        String cacheKey = cacheKey(systemPrompt, history);
+        return call(systemPrompt, history, false);
+    }
+
+    /**
+     * OpenAI JSON 모드(response_format=json_object)로 호출해 문법적으로 유효한 JSON만 받는다.
+     * 채점 등 구조화 응답을 파싱하는 곳 전용 — 피드백 문자열 안의 따옴표가 JSON을 깨는
+     * 문제를 모델 강제 레벨에서 차단한다. (프롬프트에 "JSON" 언급이 있어야 동작)
+     */
+    public AiChatResult chatJson(String systemPrompt, List<Message> history) {
+        return call(systemPrompt, history, true);
+    }
+
+    private AiChatResult call(String systemPrompt, List<Message> history, boolean jsonMode) {
+        String cacheKey = cacheKey(systemPrompt, history, jsonMode);
         AiChatResult cached = readCache(cacheKey);
         if (cached != null) {
             return cached; // 캐시 히트여도 토큰은 원 호출 값 그대로 과금(효율 점수 공정성)
         }
 
-        ChatResponse response = chatClient.prompt()
+        var spec = chatClient.prompt()
                 .system(systemPrompt)
-                .messages(history)
-                .call()
-                .chatResponse();
+                .messages(history);
+        if (jsonMode) {
+            spec = spec.options(OpenAiChatOptions.builder()
+                    .responseFormat(ResponseFormat.builder().type(ResponseFormat.Type.JSON_OBJECT).build()));
+        }
+        ChatResponse response = spec.call().chatResponse();
 
         String content = response.getResult().getOutput().getText();
         long tokens = response.getMetadata().getUsage().getTotalTokens();
-        log.info("AI 호출 완료: historySize={}, totalTokens={}", history.size(), tokens);
+        log.info("AI 호출 완료: historySize={}, jsonMode={}, totalTokens={}", history.size(), jsonMode, tokens);
 
         AiChatResult result = new AiChatResult(content, tokens);
         writeCache(cacheKey, result);
@@ -76,9 +94,10 @@ public class AiClient {
         return new AssistantMessage(content);
     }
 
-    private String cacheKey(String systemPrompt, List<Message> history) {
+    private String cacheKey(String systemPrompt, List<Message> history, boolean jsonMode) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            digest.update(jsonMode ? (byte) 1 : (byte) 0);
             digest.update(systemPrompt.getBytes(StandardCharsets.UTF_8));
             for (Message m : history) {
                 digest.update(m.getMessageType().getValue().getBytes(StandardCharsets.UTF_8));
