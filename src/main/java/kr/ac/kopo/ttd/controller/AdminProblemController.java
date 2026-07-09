@@ -31,7 +31,7 @@ import java.util.List;
 @RequestMapping("/api/admin/problems")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
-@SecurityRequirement(name = "basicAuth")
+@SecurityRequirement(name = "bearerAuth")
 public class AdminProblemController {
 
     private final ProblemService problemService;
