@@ -16,7 +16,11 @@ public enum ErrorCode {
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "유효하지 않은 refresh token입니다."),
     UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다."),
-    ACCESS_DENIED(HttpStatus.FORBIDDEN, "접근 권한이 없습니다.");
+    ACCESS_DENIED(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
+    ATTEMPT_NOT_FOUND(HttpStatus.NOT_FOUND, "응시 내역을 찾을 수 없습니다."),
+    ATTEMPT_QUOTA_EXCEEDED(HttpStatus.CONFLICT, "이 문제의 응시 가능 횟수를 모두 사용했습니다."),
+    ATTEMPT_MESSAGE_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "AI 메시지 횟수를 모두 사용했습니다."),
+    ATTEMPT_NOT_IN_PROGRESS(HttpStatus.CONFLICT, "진행 중인 응시가 아닙니다. 이미 제출되었거나 시간이 만료되었습니다.");
 
     private final HttpStatus httpStatus;
     private final String message;
