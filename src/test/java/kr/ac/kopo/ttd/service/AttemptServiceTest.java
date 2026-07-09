@@ -5,6 +5,7 @@ import kr.ac.kopo.ttd.ai.AiClient;
 import kr.ac.kopo.ttd.common.exception.AttemptMessageLimitExceededException;
 import kr.ac.kopo.ttd.common.exception.AttemptNotFoundException;
 import kr.ac.kopo.ttd.common.exception.AttemptNotInProgressException;
+import kr.ac.kopo.ttd.common.exception.AttemptNotRegradableException;
 import kr.ac.kopo.ttd.common.exception.AttemptQuotaExceededException;
 import kr.ac.kopo.ttd.common.exception.BusinessException;
 import kr.ac.kopo.ttd.common.exception.ErrorCode;
@@ -267,5 +268,49 @@ class AttemptServiceTest {
 
         assertThatThrownBy(() -> attemptService.getCurrent(USER_ID, 1L))
                 .isInstanceOf(AttemptNotFoundException.class);
+    }
+
+    // ── 재채점 ────────────────────────────────────────────
+
+    private Attempt failedAttempt() {
+        Attempt attempt = inProgressAttempt(activeProblem());
+        attempt.submit("제출물", LocalDateTime.now());
+        attempt.failGrading();
+        return attempt;
+    }
+
+    @Test
+    void 채점_실패_상태에서_재채점을_요청하면_GRADING으로_복귀하고_다시_발행한다() {
+        Attempt attempt = failedAttempt();
+        given(attemptRepository.findById(1L)).willReturn(Optional.of(attempt));
+
+        attemptService.regrade(USER_ID, 1L);
+
+        assertThat(attempt.getStatus()).isEqualTo(AttemptStatus.GRADING);
+        assertThat(attempt.getArtifact()).isEqualTo("제출물"); // 제출물 보존 확인
+        verify(gradingProducer).requestGrading(attempt.getId());
+    }
+
+    @Test
+    void 채점_실패_상태가_아니면_재채점_불가() {
+        Attempt attempt = inProgressAttempt(activeProblem());
+        attempt.submit("제출물", LocalDateTime.now()); // GRADING 상태
+        given(attemptRepository.findById(1L)).willReturn(Optional.of(attempt));
+
+        assertThatThrownBy(() -> attemptService.regrade(USER_ID, 1L))
+                .isInstanceOf(AttemptNotRegradableException.class);
+
+        verify(gradingProducer, never()).requestGrading(any());
+    }
+
+    @Test
+    void 타인의_응시는_재채점을_요청할_수_없다() {
+        Attempt attempt = failedAttempt();
+        given(attemptRepository.findById(1L)).willReturn(Optional.of(attempt));
+
+        assertThatThrownBy(() -> attemptService.regrade(999L, 1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ACCESS_DENIED);
     }
 }

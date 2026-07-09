@@ -88,6 +88,16 @@ public class Attempt {
         this.submittedAt = now;
     }
 
+    /** 채점 실패를 기록한다. 제출물·대화 이력은 보존되며 재채점으로 복구할 수 있다. */
+    public void failGrading() {
+        changeStatus(AttemptStatus.GRADING_FAILED);
+    }
+
+    /** 재채점을 위해 채점 대기 상태로 되돌린다. */
+    public void requeueGrading() {
+        changeStatus(AttemptStatus.GRADING);
+    }
+
     public void grade(int rubricScore, int efficiencyScore, String feedback) {
         changeStatus(AttemptStatus.GRADED);
         this.rubricScore = rubricScore;
