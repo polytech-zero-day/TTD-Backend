@@ -55,7 +55,7 @@ public class RubricGrader {
                 problem.getTitle(), String.join(" / ", problem.getRequirements()),
                 artifact == null ? "(빈 제출)" : artifact, conversation);
 
-        AiChatResult result = aiClient.chat(GRADING_SYSTEM_PROMPT, List.of(AiClient.user(userPrompt)));
+        AiChatResult result = aiClient.chatJson(GRADING_SYSTEM_PROMPT, List.of(AiClient.user(userPrompt)));
         try {
             return objectMapper.readValue(extractJson(result.content()), RubricResult.class);
         } catch (Exception e) {
