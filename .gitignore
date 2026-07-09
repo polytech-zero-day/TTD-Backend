@@ -40,3 +40,4 @@ out/
 .claude/
 
 .env
+.DS_Store
