@@ -43,4 +43,23 @@ class ProblemControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.length()").value(10))
                 .andExpect(jsonPath("$.data[?(@.status != 'active')]").isEmpty());
     }
+
+    @Test
+    void 미인증_사용자는_응시자용_목록_조회가_401이다() throws Exception {
+        mockMvc.perform(get("/api/problems"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser
+    void USER_권한은_관리자용_목록_조회가_403이다() throws Exception {
+        mockMvc.perform(get("/api/admin/problems"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void 미인증_사용자는_관리자용_목록_조회가_401이다() throws Exception {
+        mockMvc.perform(get("/api/admin/problems"))
+                .andExpect(status().isUnauthorized());
+    }
 }
