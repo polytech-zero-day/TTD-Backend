@@ -7,6 +7,92 @@ servers:
 - url: http://localhost:8080
   description: Generated server url
 paths:
+  /api/attempts/{id}/draft:
+    put:
+      tags:
+      - attempt-controller
+      operationId: updateDraft
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DraftUpdateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+      security:
+      - bearerAuth: []
+  /api/admin/problems/{id}:
+    get:
+      tags:
+      - admin-problem-controller
+      operationId: getProblem
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseAdminProblemResponse"
+      security:
+      - bearerAuth: []
+    put:
+      tags:
+      - admin-problem-controller
+      operationId: updateProblem
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProblemUpdateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseAdminProblemResponse"
+      security:
+      - bearerAuth: []
+    delete:
+      tags:
+      - admin-problem-controller
+      operationId: deleteProblem
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+      security:
+      - bearerAuth: []
   /api/auth/signup:
     post:
       tags:
@@ -71,6 +157,74 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ApiResponseTokenResponse"
+  /api/attempts:
+    post:
+      tags:
+      - attempt-controller
+      operationId: start
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttemptStartRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseAttemptSnapshotResponse"
+      security:
+      - bearerAuth: []
+  /api/attempts/{id}/submit:
+    post:
+      tags:
+      - attempt-controller
+      operationId: submit
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseAttemptResultResponse"
+      security:
+      - bearerAuth: []
+  /api/attempts/{id}/messages:
+    post:
+      tags:
+      - attempt-controller
+      operationId: sendMessage
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttemptMessageRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseAttemptMessageResponse"
+      security:
+      - bearerAuth: []
   /api/admin/users:
     get:
       tags:
@@ -102,6 +256,39 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ApiResponseUserResponse"
+      security:
+      - bearerAuth: []
+  /api/admin/problems:
+    get:
+      tags:
+      - admin-problem-controller
+      operationId: getProblems
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseListAdminProblemResponse"
+      security:
+      - bearerAuth: []
+    post:
+      tags:
+      - admin-problem-controller
+      operationId: createProblem
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProblemCreateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseAdminProblemResponse"
       security:
       - bearerAuth: []
   /api/admin/users/{id}:
@@ -167,102 +354,6 @@ paths:
                 $ref: "#/components/schemas/ApiResponseUserResponse"
       security:
       - bearerAuth: []
-  /api/admin/problems:
-    get:
-      tags:
-      - admin-problem-controller
-      operationId: getProblems_1
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ApiResponseListAdminProblemResponse"
-      security:
-      - bearerAuth: []
-    post:
-      tags:
-      - admin-problem-controller
-      operationId: createProblem
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ProblemCreateRequest"
-        required: true
-      responses:
-        "201":
-          description: Created
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ApiResponseAdminProblemResponse"
-      security:
-      - bearerAuth: []
-  /api/admin/problems/{id}:
-    get:
-      tags:
-      - admin-problem-controller
-      operationId: getProblem_1
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-          format: int64
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ApiResponseAdminProblemResponse"
-      security:
-      - bearerAuth: []
-    put:
-      tags:
-      - admin-problem-controller
-      operationId: updateProblem
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-          format: int64
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ProblemUpdateRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ApiResponseAdminProblemResponse"
-      security:
-      - bearerAuth: []
-    delete:
-      tags:
-      - admin-problem-controller
-      operationId: deleteProblem
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-          format: int64
-      responses:
-        "204":
-          description: No Content
-      security:
-      - bearerAuth: []
   /api/admin/problems/{id}/status:
     patch:
       tags:
@@ -294,7 +385,7 @@ paths:
     get:
       tags:
       - problem-controller
-      operationId: getProblems
+      operationId: getProblems_1
       responses:
         "200":
           description: OK
@@ -308,7 +399,7 @@ paths:
     get:
       tags:
       - problem-controller
-      operationId: getProblem
+      operationId: getProblem_1
       parameters:
       - name: id
         in: path
@@ -325,8 +416,184 @@ paths:
                 $ref: "#/components/schemas/ApiResponseProblemResponse"
       security:
       - bearerAuth: []
+  /api/attempts/{id}/result:
+    get:
+      tags:
+      - attempt-controller
+      operationId: getResult
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseAttemptResultResponse"
+      security:
+      - bearerAuth: []
+  /api/attempts/current:
+    get:
+      tags:
+      - attempt-controller
+      operationId: getCurrent
+      parameters:
+      - name: problemId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseAttemptSnapshotResponse"
+      security:
+      - bearerAuth: []
 components:
   schemas:
+    DraftUpdateRequest:
+      type: object
+      properties:
+        draft:
+          type: string
+    ProblemUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          minLength: 0
+        difficulty:
+          type: string
+          enum:
+          - L1
+          - L2
+        type:
+          type: string
+          enum:
+          - CLASSIFY
+          - CONSTRAINT
+          - ANALYSIS_BASIC
+          - ANALYSIS_ADV
+          - AMBIGUOUS
+          - REPORT
+          - SKELETON_STAT
+          - SKELETON_HTTP
+          - SKELETON_LOG
+          - SKELETON_RESERVE
+        sourceType:
+          type: string
+          enum:
+          - AUTO_GRADED
+          - RUBRIC_ONLY
+        description:
+          type: string
+          minLength: 1
+        requirements:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+        constraints:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+        skeletonCode:
+          type: string
+        maxAttempts:
+          type: integer
+          format: int32
+          minimum: 1
+      required:
+      - constraints
+      - description
+      - difficulty
+      - maxAttempts
+      - requirements
+      - sourceType
+      - title
+      - type
+    AdminProblemResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        difficulty:
+          type: string
+          enum:
+          - L1
+          - L2
+        type:
+          type: string
+          enum:
+          - CLASSIFY
+          - CONSTRAINT
+          - ANALYSIS_BASIC
+          - ANALYSIS_ADV
+          - AMBIGUOUS
+          - REPORT
+          - SKELETON_STAT
+          - SKELETON_HTTP
+          - SKELETON_LOG
+          - SKELETON_RESERVE
+        maxAttempts:
+          type: integer
+          format: int32
+        sourceType:
+          type: string
+          enum:
+          - AUTO_GRADED
+          - RUBRIC_ONLY
+        description:
+          type: string
+        requirements:
+          type: array
+          items:
+            type: string
+        constraints:
+          type: array
+          items:
+            type: string
+        skeletonCode:
+          type: string
+        status:
+          type: string
+          enum:
+          - draft
+          - pending
+          - active
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ApiResponseAdminProblemResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/AdminProblemResponse"
+        errorCode:
+          type: string
+        message:
+          type: string
     SignupRequest:
       type: object
       properties:
@@ -419,6 +686,122 @@ components:
       required:
       - email
       - password
+    AttemptStartRequest:
+      type: object
+      properties:
+        problemId:
+          type: integer
+          format: int64
+      required:
+      - problemId
+    ApiResponseAttemptSnapshotResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/AttemptSnapshotResponse"
+        errorCode:
+          type: string
+        message:
+          type: string
+    AttemptSnapshotResponse:
+      type: object
+      properties:
+        attemptId:
+          type: integer
+          format: int64
+        status:
+          type: string
+        remainingSeconds:
+          type: integer
+          format: int64
+        usage:
+          $ref: "#/components/schemas/AttemptUsageResponse"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessageResponse"
+        draft:
+          type: string
+    AttemptUsageResponse:
+      type: object
+      properties:
+        messagesUsed:
+          type: integer
+          format: int32
+        messagesLimit:
+          type: integer
+          format: int32
+        tokensUsed:
+          type: integer
+          format: int64
+        tokensBaseline:
+          type: integer
+          format: int64
+    ChatMessageResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        role:
+          type: string
+        content:
+          type: string
+    ApiResponseAttemptResultResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/AttemptResultResponse"
+        errorCode:
+          type: string
+        message:
+          type: string
+    AttemptResultResponse:
+      type: object
+      properties:
+        attemptId:
+          type: integer
+          format: int64
+        status:
+          type: string
+        rubricScore:
+          type: integer
+          format: int32
+        efficiencyScore:
+          type: integer
+          format: int32
+        feedback:
+          type: string
+    AttemptMessageRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+      required:
+      - content
+    ApiResponseAttemptMessageResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/AttemptMessageResponse"
+        errorCode:
+          type: string
+        message:
+          type: string
+    AttemptMessageResponse:
+      type: object
+      properties:
+        message:
+          $ref: "#/components/schemas/ChatMessageResponse"
+        usage:
+          $ref: "#/components/schemas/AttemptUsageResponse"
     UserCreateRequest:
       type: object
       properties:
@@ -444,6 +827,65 @@ components:
       - nickname
       - password
       - role
+    ProblemCreateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          minLength: 0
+        difficulty:
+          type: string
+          enum:
+          - L1
+          - L2
+        type:
+          type: string
+          enum:
+          - CLASSIFY
+          - CONSTRAINT
+          - ANALYSIS_BASIC
+          - ANALYSIS_ADV
+          - AMBIGUOUS
+          - REPORT
+          - SKELETON_STAT
+          - SKELETON_HTTP
+          - SKELETON_LOG
+          - SKELETON_RESERVE
+        sourceType:
+          type: string
+          enum:
+          - AUTO_GRADED
+          - RUBRIC_ONLY
+        description:
+          type: string
+          minLength: 1
+        requirements:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+        constraints:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+        skeletonCode:
+          type: string
+        maxAttempts:
+          type: integer
+          format: int32
+          minimum: 1
+      required:
+      - constraints
+      - description
+      - difficulty
+      - requirements
+      - sourceType
+      - title
+      - type
     UserUpdateRequest:
       type: object
       properties:
@@ -459,220 +901,6 @@ components:
       required:
       - nickname
       - role
-    ApiResponseListUserResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-        data:
-          type: array
-          items:
-            $ref: "#/components/schemas/UserResponse"
-        errorCode:
-          type: string
-        message:
-          type: string
-    ProblemCreateRequest:
-      type: object
-      properties:
-        title:
-          type: string
-          maxLength: 200
-          minLength: 1
-        difficulty:
-          type: string
-          enum:
-          - L1
-          - L2
-        type:
-          type: string
-          enum:
-          - CLASSIFY
-          - CONSTRAINT
-          - ANALYSIS_BASIC
-          - ANALYSIS_ADV
-          - AMBIGUOUS
-          - REPORT
-          - SKELETON_STAT
-          - SKELETON_HTTP
-          - SKELETON_LOG
-          - SKELETON_RESERVE
-        sourceType:
-          type: string
-          enum:
-          - AUTO_GRADED
-          - RUBRIC_ONLY
-        description:
-          type: string
-          minLength: 1
-        requirements:
-          type: array
-          items:
-            type: string
-            minLength: 1
-          minItems: 1
-        constraints:
-          type: array
-          items:
-            type: string
-            minLength: 1
-          minItems: 1
-        skeletonCode:
-          type: string
-        maxAttempts:
-          type: integer
-          format: int32
-          minimum: 1
-      required:
-      - constraints
-      - description
-      - difficulty
-      - requirements
-      - sourceType
-      - title
-      - type
-    AdminProblemResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-          format: int64
-        title:
-          type: string
-        difficulty:
-          type: string
-          enum:
-          - L1
-          - L2
-        type:
-          type: string
-          enum:
-          - CLASSIFY
-          - CONSTRAINT
-          - ANALYSIS_BASIC
-          - ANALYSIS_ADV
-          - AMBIGUOUS
-          - REPORT
-          - SKELETON_STAT
-          - SKELETON_HTTP
-          - SKELETON_LOG
-          - SKELETON_RESERVE
-        maxAttempts:
-          type: integer
-          format: int32
-        sourceType:
-          type: string
-          enum:
-          - AUTO_GRADED
-          - RUBRIC_ONLY
-        description:
-          type: string
-        requirements:
-          type: array
-          items:
-            type: string
-        constraints:
-          type: array
-          items:
-            type: string
-        skeletonCode:
-          type: string
-        status:
-          type: string
-          enum:
-          - draft
-          - pending
-          - active
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-    ApiResponseAdminProblemResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-        data:
-          $ref: "#/components/schemas/AdminProblemResponse"
-        errorCode:
-          type: string
-        message:
-          type: string
-    ApiResponseListAdminProblemResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-        data:
-          type: array
-          items:
-            $ref: "#/components/schemas/AdminProblemResponse"
-        errorCode:
-          type: string
-        message:
-          type: string
-    ProblemUpdateRequest:
-      type: object
-      properties:
-        title:
-          type: string
-          maxLength: 200
-          minLength: 1
-        difficulty:
-          type: string
-          enum:
-          - L1
-          - L2
-        type:
-          type: string
-          enum:
-          - CLASSIFY
-          - CONSTRAINT
-          - ANALYSIS_BASIC
-          - ANALYSIS_ADV
-          - AMBIGUOUS
-          - REPORT
-          - SKELETON_STAT
-          - SKELETON_HTTP
-          - SKELETON_LOG
-          - SKELETON_RESERVE
-        sourceType:
-          type: string
-          enum:
-          - AUTO_GRADED
-          - RUBRIC_ONLY
-        description:
-          type: string
-          minLength: 1
-        requirements:
-          type: array
-          items:
-            type: string
-            minLength: 1
-          minItems: 1
-        constraints:
-          type: array
-          items:
-            type: string
-            minLength: 1
-          minItems: 1
-        skeletonCode:
-          type: string
-        maxAttempts:
-          type: integer
-          format: int32
-          minimum: 1
-      required:
-      - constraints
-      - description
-      - difficulty
-      - maxAttempts
-      - requirements
-      - sourceType
-      - title
-      - type
     ProblemStatusUpdateRequest:
       type: object
       properties:
@@ -684,6 +912,19 @@ components:
           - active
       required:
       - status
+    ApiResponseListProblemSummaryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProblemSummaryResponse"
+        errorCode:
+          type: string
+        message:
+          type: string
     ProblemSummaryResponse:
       type: object
       properties:
@@ -713,15 +954,13 @@ components:
         maxAttempts:
           type: integer
           format: int32
-    ApiResponseListProblemSummaryResponse:
+    ApiResponseProblemResponse:
       type: object
       properties:
         success:
           type: boolean
         data:
-          type: array
-          items:
-            $ref: "#/components/schemas/ProblemSummaryResponse"
+          $ref: "#/components/schemas/ProblemResponse"
         errorCode:
           type: string
         message:
@@ -772,13 +1011,28 @@ components:
             type: string
         skeletonCode:
           type: string
-    ApiResponseProblemResponse:
+    ApiResponseListUserResponse:
       type: object
       properties:
         success:
           type: boolean
         data:
-          $ref: "#/components/schemas/ProblemResponse"
+          type: array
+          items:
+            $ref: "#/components/schemas/UserResponse"
+        errorCode:
+          type: string
+        message:
+          type: string
+    ApiResponseListAdminProblemResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminProblemResponse"
         errorCode:
           type: string
         message:
