@@ -138,6 +138,18 @@ public class AttemptService {
         return AttemptResultResponse.from(findOwnedAttempt(userId, attemptId));
     }
 
+    /** 채점 실패(GRADING_FAILED) 상태의 응시를 재채점 큐에 다시 올린다. */
+    @Transactional
+    public AttemptResultResponse regrade(Long userId, Long attemptId) {
+        Attempt attempt = findOwnedAttempt(userId, attemptId);
+        if (attempt.getStatus() != AttemptStatus.GRADING_FAILED) {
+            throw new AttemptNotRegradableException();
+        }
+        attempt.requeueGrading();
+        gradingProducer.requestGrading(attempt.getId());
+        return AttemptResultResponse.from(attempt);
+    }
+
     /** 만료된 진행 중 세션은 마지막 draft로 자동 제출한다 (업계 표준 정책). */
     private void expireIfNeeded(Attempt attempt) {
         if (attempt.isExpired(LocalDateTime.now())) {
