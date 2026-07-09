@@ -36,6 +36,9 @@ spring:
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: ${AI_MODEL:gpt-5.4-mini}
 
   data:
     redis:
@@ -63,10 +66,18 @@ app:
       execution-retry: sandbox.execution.retry.q
       execution-dlq: sandbox.execution.dlq
       result: sandbox.result.q
+      grading: grading.q     # 기존 exchange(ttd.sandbox.exchange) 재사용
     routing-key:
       execution-request: execution.request
       execution-result: execution.result
+      grading: grading.request
     retry:
       max-attempts: 3
       initial-interval-ms: 5000
       multiplier: 2.0
+  attempt:
+    time-limit-minutes: 45
+    message-limit: 10
+    token-baseline: 3000     # TODO: 효율 v3 산식 확정 시 문제별 컬럼으로 승격
+  ai:
+    cache-ttl-hours: 24
