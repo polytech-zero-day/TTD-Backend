@@ -59,4 +59,10 @@ public class AttemptController {
             @AuthenticationPrincipal Long userId, @PathVariable Long id) {
         return ApiResponse.success(attemptService.getResult(userId, id));
     }
+
+    @PostMapping("/{id}/regrade")
+    public ApiResponse<AttemptResultResponse> regrade(
+            @AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        return ApiResponse.success(attemptService.regrade(userId, id));
+    }
 }
