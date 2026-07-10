@@ -11,3 +11,7 @@ app:
     secret-key: R5434EzT7VqYYVQR1BJ0K5PFRqnM29VgkDryz92sFeo=
     access-token-ttl-minutes: 30
     refresh-token-ttl-days: 14
+  portone:
+    store-id: dummy-store-id
+    api-secret: dummy-api-secret
+    channel-key: dummy-channel-key
