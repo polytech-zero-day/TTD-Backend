@@ -2,6 +2,7 @@ package kr.ac.kopo.ttd.repository;
 
 import kr.ac.kopo.ttd.domain.Attempt;
 import kr.ac.kopo.ttd.domain.AttemptStatus;
+import kr.ac.kopo.ttd.dto.LeaderboardRowRaw;
 import kr.ac.kopo.ttd.dto.MyAttemptStatsResponse;
 import kr.ac.kopo.ttd.dto.ScatterPointResponse;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -49,4 +50,21 @@ public interface AttemptRepository extends JpaRepository<Attempt, Long> {
             where a.status = :graded
             """)
     List<ScatterPointResponse> findScatterData(@Param("graded") AttemptStatus graded);
+
+    @Query("""
+            select new kr.ac.kopo.ttd.dto.LeaderboardRowRaw(
+                a.userId,
+                a.problem.id,
+                max(a.rubricScore),
+                max(a.efficiencyScore),
+                count(a),
+                coalesce(sum(a.totalTokens), 0L)
+            )
+            from Attempt a
+            where a.status = :graded
+              and (:problemId is null or a.problem.id = :problemId)
+            group by a.userId, a.problem.id
+            """)
+    List<LeaderboardRowRaw> findLeaderboardRaw(@Param("graded") AttemptStatus graded,
+                                               @Param("problemId") Long problemId);
 }
