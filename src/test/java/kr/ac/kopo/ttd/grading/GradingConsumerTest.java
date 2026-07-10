@@ -74,14 +74,19 @@ class GradingConsumerTest {
         Attempt attempt = gradingAttempt();
         given(attemptRepository.findById(1L)).willReturn(Optional.of(attempt));
         given(rubricGrader.grade(any(), anyString(), any()))
-                .willReturn(new RubricGrader.RubricResult(90, "좋음"));
-        given(efficiencyScorer.score(anyLong())).willReturn(85);
+                .willReturn(new RubricGrader.RubricResult(90, "좋음", List.of(
+                        new kr.ac.kopo.ttd.domain.RubricCriterion("요구사항 충족", 36, 40, "충실"),
+                        new kr.ac.kopo.ttd.domain.RubricCriterion("근거 제시의 구체성", 27, 30, "구체적"),
+                        new kr.ac.kopo.ttd.domain.RubricCriterion("절차 설계의 타당성", 27, 30, "타당"))));
+        given(efficiencyScorer.score(anyLong(), anyLong())).willReturn(85);
 
         gradingConsumer.grade("1", channel, 11L);
 
         assertThat(attempt.getStatus()).isEqualTo(AttemptStatus.GRADED);
         assertThat(attempt.getRubricScore()).isEqualTo(90);
         assertThat(attempt.getEfficiencyScore()).isEqualTo(85);
+        assertThat(attempt.getFinalScore()).isEqualTo(88); // 90*0.6 + 85*0.4
+        assertThat(attempt.getRubricDetail()).hasSize(3);
         verify(channel).basicAck(11L, false);
         verify(channel, never()).basicNack(anyLong(), anyBoolean(), anyBoolean());
     }
@@ -92,8 +97,8 @@ class GradingConsumerTest {
         given(attemptRepository.findById(1L)).willReturn(Optional.of(attempt));
         given(rubricGrader.grade(any(), anyString(), any()))
                 .willThrow(new IllegalStateException("일시 오류"))
-                .willReturn(new RubricGrader.RubricResult(80, "재시도 성공"));
-        given(efficiencyScorer.score(anyLong())).willReturn(100);
+                .willReturn(new RubricGrader.RubricResult(80, "재시도 성공", List.of()));
+        given(efficiencyScorer.score(anyLong(), anyLong())).willReturn(100);
 
         gradingConsumer.grade("1", channel, 11L);
 

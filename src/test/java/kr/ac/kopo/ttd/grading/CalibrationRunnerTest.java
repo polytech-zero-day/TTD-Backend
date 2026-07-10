@@ -70,11 +70,11 @@ class CalibrationRunnerTest {
                 sample(CalibrationTier.MID, 68, "중급 답안"),
                 sample(CalibrationTier.LOW, 30, "하급 답안")));
         given(rubricGrader.grade(any(), contains("상급"), any()))
-                .willReturn(new RubricGrader.RubricResult(90, "좋음"));   // HIGH 일치, 오차 5
+                .willReturn(new RubricGrader.RubricResult(90, "좋음", java.util.List.of()));   // HIGH 일치, 오차 5
         given(rubricGrader.grade(any(), contains("중급"), any()))
-                .willReturn(new RubricGrader.RubricResult(75, "무난"));   // HIGH 판정 — MID 불일치, 오차 7
+                .willReturn(new RubricGrader.RubricResult(75, "무난", java.util.List.of()));   // HIGH 판정 — MID 불일치, 오차 7
         given(rubricGrader.grade(any(), contains("하급"), any()))
-                .willReturn(new RubricGrader.RubricResult(25, "부족"));   // LOW 일치, 오차 5
+                .willReturn(new RubricGrader.RubricResult(25, "부족", java.util.List.of()));   // LOW 일치, 오차 5
 
         CalibrationRunResponse response = calibrationRunner.run(70, 40, 15);
 
@@ -92,7 +92,7 @@ class CalibrationRunnerTest {
                 sample(CalibrationTier.HIGH, 95, "[임시] 정답 100% 일치 요약"),
                 sample(CalibrationTier.LOW, 30, "실제 하급 답안")));
         given(rubricGrader.grade(any(), anyString(), any()))
-                .willReturn(new RubricGrader.RubricResult(20, "부족"));
+                .willReturn(new RubricGrader.RubricResult(20, "부족", java.util.List.of()));
 
         CalibrationRunResponse response = calibrationRunner.run(70, 40, 15);
 
@@ -112,7 +112,7 @@ class CalibrationRunnerTest {
         given(rubricGrader.grade(any(), contains("실패할"), any()))
                 .willThrow(new IllegalStateException("파싱 실패"));
         given(rubricGrader.grade(any(), contains("정상"), any()))
-                .willReturn(new RubricGrader.RubricResult(25, "부족"));
+                .willReturn(new RubricGrader.RubricResult(25, "부족", java.util.List.of()));
 
         CalibrationRunResponse response = calibrationRunner.run(70, 40, 15);
 

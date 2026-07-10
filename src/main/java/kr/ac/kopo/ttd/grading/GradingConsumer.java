@@ -27,6 +27,10 @@ public class GradingConsumer {
 
     private static final int RETRY_LIMIT = 2;
 
+    // TODO: 종합 점수 가중치 — 산식 회의 확정 시 조정 (현재 품질 60% + 효율 40%)
+    private static final double RUBRIC_WEIGHT = 0.6;
+    private static final double EFFICIENCY_WEIGHT = 0.4;
+
     private final AttemptRepository attemptRepository;
     private final AttemptMessageRepository messageRepository;
     private final RubricGrader rubricGrader;
@@ -42,10 +46,14 @@ public class GradingConsumer {
             Attempt attempt = attemptRepository.findById(attemptId).orElseThrow();
 
             RubricGrader.RubricResult rubric = gradeWithRetry(attempt, attemptId);
-            int efficiency = efficiencyScorer.score(attempt.getTotalTokens());
+            int efficiency = efficiencyScorer.score(
+                    attempt.getTotalTokens(), attempt.getProblem().getTokenBudget());
+            int finalScore = (int) Math.round(
+                    rubric.score() * RUBRIC_WEIGHT + efficiency * EFFICIENCY_WEIGHT);
 
-            attempt.grade(rubric.score(), efficiency, rubric.feedback());
-            log.info("채점 완료: attemptId={}, rubric={}, efficiency={}", attemptId, rubric.score(), efficiency);
+            attempt.grade(rubric.score(), efficiency, finalScore, rubric.feedback(), rubric.criteria());
+            log.info("채점 완료: attemptId={}, rubric={}, efficiency={}, final={}",
+                    attemptId, rubric.score(), efficiency, finalScore);
         } catch (Exception e) {
             log.error("채점 최종 실패: payload={}", attemptIdPayload, e);
             markFailed(attemptId);
