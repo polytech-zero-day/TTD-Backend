@@ -118,7 +118,7 @@ class AttemptServiceTest {
     void 응시를_시작하면_새_세션을_생성한다() {
         Problem problem = activeProblem();
         given(problemRepository.findByIdAndStatus(1L, ProblemStatus.ACTIVE)).willReturn(Optional.of(problem));
-        given(attemptRepository.findFirstByUserIdAndProblemIdAndStatusOrderByIdDesc(USER_ID, problem.getId(), AttemptStatus.IN_PROGRESS))
+        given(attemptRepository.findFirstByUserIdAndProblemIdOrderByIdDesc(USER_ID, problem.getId()))
                 .willReturn(Optional.empty());
         given(attemptRepository.countByUserIdAndProblemId(USER_ID, problem.getId())).willReturn(0L);
         given(attemptRepository.save(any(Attempt.class))).willAnswer(invocation -> invocation.getArgument(0));
@@ -138,7 +138,7 @@ class AttemptServiceTest {
         Problem problem = activeProblem();
         Attempt existing = inProgressAttempt(problem);
         given(problemRepository.findByIdAndStatus(1L, ProblemStatus.ACTIVE)).willReturn(Optional.of(problem));
-        given(attemptRepository.findFirstByUserIdAndProblemIdAndStatusOrderByIdDesc(USER_ID, problem.getId(), AttemptStatus.IN_PROGRESS))
+        given(attemptRepository.findFirstByUserIdAndProblemIdOrderByIdDesc(USER_ID, problem.getId()))
                 .willReturn(Optional.of(existing));
         given(messageRepository.findByAttemptIdOrderByIdAsc(any())).willReturn(List.of());
 
@@ -152,7 +152,7 @@ class AttemptServiceTest {
     void 응시_횟수를_모두_사용하면_예외() {
         Problem problem = activeProblem();
         given(problemRepository.findByIdAndStatus(1L, ProblemStatus.ACTIVE)).willReturn(Optional.of(problem));
-        given(attemptRepository.findFirstByUserIdAndProblemIdAndStatusOrderByIdDesc(USER_ID, problem.getId(), AttemptStatus.IN_PROGRESS))
+        given(attemptRepository.findFirstByUserIdAndProblemIdOrderByIdDesc(USER_ID, problem.getId()))
                 .willReturn(Optional.empty());
         given(attemptRepository.countByUserIdAndProblemId(USER_ID, problem.getId())).willReturn(3L);
 
@@ -168,6 +168,23 @@ class AttemptServiceTest {
 
         assertThatThrownBy(() -> attemptService.start(USER_ID, new AttemptStartRequest(99L)))
                 .isInstanceOf(ProblemNotFoundException.class);
+    }
+
+    @Test
+    void 채점_중_세션은_새_응시를_만들지_않고_그대로_복원한다() {
+        // 제출 후 채점 대기 중 새로고침 — 새 응시(quota 소진)가 아니라 GRADING 세션을 이어준다
+        Problem problem = activeProblem();
+        Attempt grading = inProgressAttempt(problem);
+        grading.submit("제출물", LocalDateTime.now()); // status GRADING
+        given(problemRepository.findByIdAndStatus(1L, ProblemStatus.ACTIVE)).willReturn(Optional.of(problem));
+        given(attemptRepository.findFirstByUserIdAndProblemIdOrderByIdDesc(USER_ID, problem.getId()))
+                .willReturn(Optional.of(grading));
+        given(messageRepository.findByAttemptIdOrderByIdAsc(any())).willReturn(List.of());
+
+        AttemptSnapshotResponse response = attemptService.start(USER_ID, new AttemptStartRequest(1L));
+
+        assertThat(response.status()).isEqualTo("GRADING");
+        verify(attemptRepository, never()).save(any());
     }
 
     // ── 대화 ──────────────────────────────────────────────
@@ -326,8 +343,7 @@ class AttemptServiceTest {
         Problem problem = activeProblem();
         Attempt expired = expiredAttempt(problem);
         given(problemRepository.findByIdAndStatus(1L, ProblemStatus.ACTIVE)).willReturn(Optional.of(problem));
-        given(attemptRepository.findFirstByUserIdAndProblemIdAndStatusOrderByIdDesc(
-                USER_ID, problem.getId(), AttemptStatus.IN_PROGRESS)).willReturn(Optional.of(expired));
+        given(attemptRepository.findFirstByUserIdAndProblemIdOrderByIdDesc(USER_ID, problem.getId())).willReturn(Optional.of(expired));
         given(messageRepository.findByAttemptIdOrderByIdAsc(any())).willReturn(List.of());
 
         AttemptSnapshotResponse response = attemptService.start(USER_ID, new AttemptStartRequest(1L));
