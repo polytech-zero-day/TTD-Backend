@@ -849,6 +849,12 @@ components:
           type: string
         content:
           type: string
+        tokensUsed:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
     ApiResponseAttemptResultResponse:
       type: object
       properties:
@@ -868,13 +874,56 @@ components:
           format: int64
         status:
           type: string
+        problemTitle:
+          type: string
+        difficulty:
+          type: string
+        attemptOrdinal:
+          type: integer
+          format: int32
+        maxAttempts:
+          type: integer
+          format: int32
+        submittedAt:
+          type: string
+          format: date-time
         rubricScore:
           type: integer
           format: int32
         efficiencyScore:
           type: integer
           format: int32
+        finalScore:
+          type: integer
+          format: int32
         feedback:
+          type: string
+        criteria:
+          type: array
+          items:
+            $ref: "#/components/schemas/RubricCriterion"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessageResponse"
+        totalTokens:
+          type: integer
+          format: int64
+        tokenBudget:
+          type: integer
+          format: int64
+    RubricCriterion:
+      type: object
+      properties:
+        name:
+          type: string
+        score:
+          type: integer
+          format: int32
+        maxScore:
+          type: integer
+          format: int32
+        comment:
           type: string
     AttemptMessageRequest:
       type: object
