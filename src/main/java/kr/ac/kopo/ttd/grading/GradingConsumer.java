@@ -45,6 +45,12 @@ public class GradingConsumer {
             attemptId = Long.valueOf(attemptIdPayload);
             Attempt attempt = attemptRepository.findById(attemptId).orElseThrow();
 
+            if (attempt.getStatus() != AttemptStatus.GRADING) {
+                // 중복 배달·재시작 후 유령 메시지 방어 — LLM 호출 전에 걸러 비용을 아낀다
+                log.warn("채점 대상이 아닌 응시라 스킵: attemptId={}, status={}", attemptId, attempt.getStatus());
+                return;
+            }
+
             RubricGrader.RubricResult rubric = gradeWithRetry(attempt, attemptId);
             int efficiency = efficiencyScorer.score(
                     attempt.getTotalTokens(), attempt.getProblem().getTokenBudget());

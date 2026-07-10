@@ -122,6 +122,27 @@ class GradingConsumerTest {
     }
 
     @Test
+    void 채점_대상이_아닌_응시는_LLM_호출_없이_스킵하고_ack한다() throws IOException {
+        // 브로커 영속 큐 + 인메모리 DB 재시작 조합에서 생기는 유령 메시지 방어
+        Problem problem = Problem.builder()
+                .title("문제").difficulty(Difficulty.L1).type(ProblemType.CLASSIFY)
+                .sourceType(SourceType.RUBRIC_ONLY).description("설명")
+                .requirements(List.of("요구사항")).constraints(List.of("제약"))
+                .build();
+        Attempt inProgress = Attempt.builder()
+                .userId(1L).problem(problem)
+                .endsAt(LocalDateTime.now().plusMinutes(45))
+                .build(); // IN_PROGRESS — 채점 대상 아님
+        given(attemptRepository.findById(1L)).willReturn(Optional.of(inProgress));
+
+        gradingConsumer.grade("1", channel, 11L);
+
+        assertThat(inProgress.getStatus()).isEqualTo(AttemptStatus.IN_PROGRESS); // 상태 불변
+        verify(rubricGrader, never()).grade(any(), anyString(), any()); // LLM 비용 발생 안 함
+        verify(channel).basicAck(11L, false); // 메시지는 소진
+    }
+
+    @Test
     void 페이로드가_잘못되어도_메시지는_소비_확정한다() throws IOException {
         gradingConsumer.grade("not-a-number", channel, 11L);
 
