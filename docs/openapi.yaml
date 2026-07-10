@@ -26,8 +26,37 @@ paths:
               $ref: "#/components/schemas/DraftUpdateRequest"
         required: true
       responses:
-        "204":
-          description: No Content
+        "200":
+          description: OK
+      security:
+      - bearerAuth: []
+  /api/admin/settings/ai-models/{purpose}:
+    put:
+      tags:
+      - admin-ai-model-controller
+      operationId: updateModel
+      parameters:
+      - name: purpose
+        in: path
+        required: true
+        schema:
+          type: string
+          enum:
+          - CHAT
+          - GRADING
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiModelUpdateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseAiModelSettingResponse"
       security:
       - bearerAuth: []
   /api/admin/problems/{id}:
@@ -89,8 +118,37 @@ paths:
           type: integer
           format: int64
       responses:
-        "204":
-          description: No Content
+        "200":
+          description: OK
+      security:
+      - bearerAuth: []
+  /api/subscriptions:
+    post:
+      tags:
+      - subscription-controller
+      operationId: subscribe
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionSubscribeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseSubscriptionResponse"
+      security:
+      - bearerAuth: []
+    delete:
+      tags:
+      - subscription-controller
+      operationId: cancel
+      responses:
+        "200":
+          description: OK
       security:
       - bearerAuth: []
   /api/auth/signup:
@@ -105,8 +163,8 @@ paths:
               $ref: "#/components/schemas/SignupRequest"
         required: true
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           content:
             '*/*':
               schema:
@@ -135,8 +193,8 @@ paths:
       - auth-controller
       operationId: logout
       responses:
-        "204":
-          description: No Content
+        "200":
+          description: OK
       security:
       - bearerAuth: []
   /api/auth/login:
@@ -169,8 +227,8 @@ paths:
               $ref: "#/components/schemas/AttemptStartRequest"
         required: true
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           content:
             '*/*':
               schema:
@@ -271,8 +329,8 @@ paths:
               $ref: "#/components/schemas/UserCreateRequest"
         required: true
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           content:
             '*/*':
               schema:
@@ -304,8 +362,8 @@ paths:
               $ref: "#/components/schemas/ProblemCreateRequest"
         required: true
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           content:
             '*/*':
               schema:
@@ -381,8 +439,8 @@ paths:
           type: integer
           format: int64
       responses:
-        "204":
-          description: No Content
+        "200":
+          description: OK
       security:
       - bearerAuth: []
     patch:
@@ -438,6 +496,34 @@ paths:
                 $ref: "#/components/schemas/ApiResponseAdminProblemResponse"
       security:
       - bearerAuth: []
+  /api/users/me:
+    get:
+      tags:
+      - user-profile-controller
+      operationId: getMyProfile
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseMyProfileResponse"
+      security:
+      - bearerAuth: []
+  /api/subscriptions/me:
+    get:
+      tags:
+      - subscription-controller
+      operationId: getMySubscription
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseSubscriptionResponse"
+      security:
+      - bearerAuth: []
   /api/problems:
     get:
       tags:
@@ -473,6 +559,33 @@ paths:
                 $ref: "#/components/schemas/ApiResponseProblemResponse"
       security:
       - bearerAuth: []
+  /api/leaderboard:
+    get:
+      tags:
+      - leaderboard-controller
+      operationId: getLeaderboard
+      parameters:
+      - name: problemId
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseLeaderboardResponse"
+      security:
+      - bearerAuth: []
   /api/attempts/{id}/result:
     get:
       tags:
@@ -492,6 +605,48 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ApiResponseAttemptResultResponse"
+      security:
+      - bearerAuth: []
+  /api/attempts/scatter:
+    get:
+      tags:
+      - attempt-controller
+      operationId: getScatter
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseListScatterPointResponse"
+      security:
+      - bearerAuth: []
+  /api/attempts/my:
+    get:
+      tags:
+      - attempt-controller
+      operationId: getMyAttempts
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseListMyAttemptSummaryResponse"
+      security:
+      - bearerAuth: []
+  /api/attempts/my/stats:
+    get:
+      tags:
+      - attempt-controller
+      operationId: getMyStats
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseMyAttemptStatsResponse"
       security:
       - bearerAuth: []
   /api/attempts/current:
@@ -515,47 +670,18 @@ paths:
                 $ref: "#/components/schemas/ApiResponseAttemptSnapshotResponse"
       security:
       - bearerAuth: []
-  /api/subscriptions:
-    post:
-      tags:
-      - subscription-controller
-      operationId: subscribe
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/SubscriptionSubscribeRequest"
-        required: true
-      responses:
-        "201":
-          description: Created
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ApiResponseSubscriptionResponse"
-      security:
-      - bearerAuth: []
-    delete:
-      tags:
-      - subscription-controller
-      operationId: cancel
-      responses:
-        "204":
-          description: No Content
-      security:
-      - bearerAuth: []
-  /api/subscriptions/me:
+  /api/admin/settings/ai-models:
     get:
       tags:
-      - subscription-controller
-      operationId: getMySubscription
+      - admin-ai-model-controller
+      operationId: getSettings
       responses:
         "200":
           description: OK
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ApiResponseSubscriptionResponse"
+                $ref: "#/components/schemas/ApiResponseAiModelSettingsResponse"
       security:
       - bearerAuth: []
 components:
@@ -564,6 +690,45 @@ components:
       type: object
       properties:
         draft:
+          type: string
+    AiModelUpdateRequest:
+      type: object
+      properties:
+        model:
+          type: string
+          minLength: 1
+      required:
+      - model
+    AiModelSettingResponse:
+      type: object
+      properties:
+        purpose:
+          type: string
+          enum:
+          - CHAT
+          - GRADING
+        label:
+          type: string
+        model:
+          type: string
+        fromDefault:
+          type: boolean
+        updatedBy:
+          type: integer
+          format: int64
+        updatedAt:
+          type: string
+          format: date-time
+    ApiResponseAiModelSettingResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/AiModelSettingResponse"
+        errorCode:
+          type: string
+        message:
           type: string
     ProblemUpdateRequest:
       type: object
@@ -694,6 +859,44 @@ components:
           type: string
         message:
           type: string
+    SubscriptionSubscribeRequest:
+      type: object
+      properties:
+        billingKey:
+          type: string
+          minLength: 1
+      required:
+      - billingKey
+    ApiResponseSubscriptionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/SubscriptionResponse"
+        errorCode:
+          type: string
+        message:
+          type: string
+    SubscriptionResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - PAST_DUE
+          - CANCELED
+          - EXPIRED
+        currentPeriodStart:
+          type: string
+          format: date-time
+        nextBillingAt:
+          type: string
+          format: date-time
+        canceledAt:
+          type: string
+          format: date-time
     SignupRequest:
       type: object
       properties:
@@ -1157,6 +1360,32 @@ components:
           - active
       required:
       - status
+    ApiResponseMyProfileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/MyProfileResponse"
+        errorCode:
+          type: string
+        message:
+          type: string
+    MyProfileResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        email:
+          type: string
+        nickname:
+          type: string
+        role:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
     ApiResponseListProblemSummaryResponse:
       type: object
       properties:
@@ -1256,6 +1485,160 @@ components:
             type: string
         skeletonCode:
           type: string
+    ApiResponseLeaderboardResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/LeaderboardResponse"
+        errorCode:
+          type: string
+        message:
+          type: string
+    LeaderboardEntryResponse:
+      type: object
+      properties:
+        rank:
+          type: integer
+          format: int32
+        name:
+          type: string
+        quality:
+          type: integer
+          format: int32
+        efficiency:
+          type: integer
+          format: int32
+        attempts:
+          type: number
+          format: double
+        tokens:
+          type: integer
+          format: int64
+        total:
+          type: integer
+          format: int32
+        isCurrentUser:
+          type: boolean
+    LeaderboardResponse:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardEntryResponse"
+        stats:
+          $ref: "#/components/schemas/LeaderboardStatsResponse"
+    LeaderboardStatsResponse:
+      type: object
+      properties:
+        avgTopAttempts:
+          type: number
+          format: double
+        avgTopTokens:
+          type: integer
+          format: int64
+        myRank:
+          type: integer
+          format: int32
+        myPercentile:
+          type: integer
+          format: int32
+    ApiResponseListScatterPointResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScatterPointResponse"
+        errorCode:
+          type: string
+        message:
+          type: string
+    ScatterPointResponse:
+      type: object
+      properties:
+        rubricScore:
+          type: integer
+          format: int32
+        efficiencyScore:
+          type: integer
+          format: int32
+    ApiResponseListMyAttemptSummaryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyAttemptSummaryResponse"
+        errorCode:
+          type: string
+        message:
+          type: string
+    MyAttemptSummaryResponse:
+      type: object
+      properties:
+        attemptId:
+          type: integer
+          format: int64
+        problemId:
+          type: integer
+          format: int64
+        problemTitle:
+          type: string
+        difficulty:
+          type: string
+          enum:
+          - L1
+          - L2
+        status:
+          type: string
+        rubricScore:
+          type: integer
+          format: int32
+        efficiencyScore:
+          type: integer
+          format: int32
+        submittedAt:
+          type: string
+          format: date-time
+    ApiResponseMyAttemptStatsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/MyAttemptStatsResponse"
+        errorCode:
+          type: string
+        message:
+          type: string
+    MyAttemptStatsResponse:
+      type: object
+      properties:
+        totalAttempts:
+          type: integer
+          format: int64
+        avgQualityScore:
+          type: number
+          format: double
+        avgEfficiencyScore:
+          type: number
+          format: double
+        bestScore:
+          type: number
+          format: double
+        totalTokens:
+          type: integer
+          format: int64
+        completionRate:
+          type: number
+          format: double
     ApiResponseListUserResponse:
       type: object
       properties:
@@ -1269,6 +1652,28 @@ components:
           type: string
         message:
           type: string
+    AiModelSettingsResponse:
+      type: object
+      properties:
+        settings:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiModelSettingResponse"
+        availableModels:
+          type: array
+          items:
+            type: string
+    ApiResponseAiModelSettingsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/AiModelSettingsResponse"
+        errorCode:
+          type: string
+        message:
+          type: string
     ApiResponseListAdminProblemResponse:
       type: object
       properties:
@@ -1278,44 +1683,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AdminProblemResponse"
-        errorCode:
-          type: string
-        message:
-          type: string
-    SubscriptionSubscribeRequest:
-      type: object
-      properties:
-        billingKey:
-          type: string
-          minLength: 1
-      required:
-      - billingKey
-    SubscriptionResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          enum:
-          - ACTIVE
-          - PAST_DUE
-          - CANCELED
-          - EXPIRED
-        currentPeriodStart:
-          type: string
-          format: date-time
-        nextBillingAt:
-          type: string
-          format: date-time
-        canceledAt:
-          type: string
-          format: date-time
-    ApiResponseSubscriptionResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-        data:
-          $ref: "#/components/schemas/SubscriptionResponse"
         errorCode:
           type: string
         message:
