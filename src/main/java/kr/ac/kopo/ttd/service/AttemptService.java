@@ -33,7 +33,6 @@ public class AttemptService {
     private final AiClient aiClient;
     private final GradingProducer gradingProducer;
     private final int messageLimit;
-    private final long tokenBaseline;
     private final long timeLimitMinutes;
 
     public AttemptService(
@@ -43,7 +42,6 @@ public class AttemptService {
             AiClient aiClient,
             GradingProducer gradingProducer,
             @Value("${app.attempt.message-limit}") int messageLimit,
-            @Value("${app.attempt.token-baseline}") long tokenBaseline,
             @Value("${app.attempt.time-limit-minutes}") long timeLimitMinutes) {
         this.attemptRepository = attemptRepository;
         this.messageRepository = messageRepository;
@@ -51,7 +49,6 @@ public class AttemptService {
         this.aiClient = aiClient;
         this.gradingProducer = gradingProducer;
         this.messageLimit = messageLimit;
-        this.tokenBaseline = tokenBaseline;
         this.timeLimitMinutes = timeLimitMinutes;
     }
 
@@ -115,7 +112,7 @@ public class AttemptService {
 
         return new AttemptMessageResponse(
                 ChatMessageResponse.from(assistantMessage),
-                AttemptUsageResponse.of(attempt, messageLimit, tokenBaseline));
+                AttemptUsageResponse.of(attempt, messageLimit, attempt.getProblem().getTokenBudget()));
     }
 
     @Transactional
@@ -131,11 +128,11 @@ public class AttemptService {
         requireInProgress(attempt);
         attempt.submit(attempt.getDraft(), LocalDateTime.now());
         gradingProducer.requestGrading(attempt.getId());
-        return AttemptResultResponse.from(attempt);
+        return toResultResponse(attempt);
     }
 
     public AttemptResultResponse getResult(Long userId, Long attemptId) {
-        return AttemptResultResponse.from(findOwnedAttempt(userId, attemptId));
+        return toResultResponse(findOwnedAttempt(userId, attemptId));
     }
 
     public List<MyAttemptSummaryResponse> getMyAttempts(Long userId) {
@@ -163,7 +160,15 @@ public class AttemptService {
         }
         attempt.requeueGrading();
         gradingProducer.requestGrading(attempt.getId());
-        return AttemptResultResponse.from(attempt);
+        return toResultResponse(attempt);
+    }
+
+    /** 결과 리포트 조립 — 대화 이력과 회차(사용자·문제 기준 몇 번째 응시인지)를 포함한다. */
+    private AttemptResultResponse toResultResponse(Attempt attempt) {
+        List<AttemptMessage> messages = messageRepository.findByAttemptIdOrderByIdAsc(attempt.getId());
+        int ordinal = attemptRepository.countByUserIdAndProblemIdAndIdLessThanEqual(
+                attempt.getUserId(), attempt.getProblem().getId(), attempt.getId());
+        return AttemptResultResponse.of(attempt, messages, ordinal);
     }
 
     /** 만료된 진행 중 세션은 마지막 draft로 자동 제출한다 (업계 표준 정책). */
@@ -197,7 +202,7 @@ public class AttemptService {
                 .map(ChatMessageResponse::from).toList();
         return new AttemptSnapshotResponse(
                 attempt.getId(), attempt.getStatus().name(), remaining,
-                AttemptUsageResponse.of(attempt, messageLimit, tokenBaseline),
+                AttemptUsageResponse.of(attempt, messageLimit, attempt.getProblem().getTokenBudget()),
                 messages, attempt.getDraft());
     }
 }

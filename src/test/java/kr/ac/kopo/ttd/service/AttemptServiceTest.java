@@ -16,10 +16,13 @@ import kr.ac.kopo.ttd.domain.AttemptStatus;
 import kr.ac.kopo.ttd.domain.Difficulty;
 import kr.ac.kopo.ttd.domain.Problem;
 import kr.ac.kopo.ttd.domain.ProblemStatus;
+import kr.ac.kopo.ttd.domain.MessageRole;
 import kr.ac.kopo.ttd.domain.ProblemType;
+import kr.ac.kopo.ttd.domain.RubricCriterion;
 import kr.ac.kopo.ttd.domain.SourceType;
 import kr.ac.kopo.ttd.dto.AttemptMessageRequest;
 import kr.ac.kopo.ttd.dto.AttemptMessageResponse;
+import kr.ac.kopo.ttd.dto.AttemptResultResponse;
 import kr.ac.kopo.ttd.dto.AttemptSnapshotResponse;
 import kr.ac.kopo.ttd.dto.AttemptStartRequest;
 import kr.ac.kopo.ttd.dto.DraftUpdateRequest;
@@ -77,7 +80,7 @@ class AttemptServiceTest {
         attemptService = new AttemptService(
                 attemptRepository, messageRepository, problemRepository,
                 aiClient, gradingProducer,
-                MESSAGE_LIMIT, TOKEN_BASELINE, TIME_LIMIT_MINUTES);
+                MESSAGE_LIMIT, TIME_LIMIT_MINUTES);
     }
 
     private Problem activeProblem() {
@@ -219,6 +222,50 @@ class AttemptServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.ACCESS_DENIED);
+    }
+
+    // ── 결과 조회 ──────────────────────────────────────────
+
+    @Test
+    void 채점_완료된_응시는_리포트_전체를_담아_반환한다() {
+        Attempt attempt = inProgressAttempt(activeProblem());
+        attempt.submit("최종 결과물", LocalDateTime.now());
+        attempt.grade(90, 80, 86, "총평입니다.",
+                List.of(new RubricCriterion("요구사항 충족", 36, 40, "대체로 충족")));
+        given(attemptRepository.findById(1L)).willReturn(Optional.of(attempt));
+        given(messageRepository.findByAttemptIdOrderByIdAsc(attempt.getId())).willReturn(List.of(
+                AttemptMessage.builder().attempt(attempt).role(MessageRole.USER)
+                        .content("분류 기준을 알려줘").build(),
+                AttemptMessage.builder().attempt(attempt).role(MessageRole.ASSISTANT)
+                        .content("기준은 다음과 같습니다").tokensUsed(500L).build()));
+        given(attemptRepository.countByUserIdAndProblemIdAndIdLessThanEqual(
+                USER_ID, attempt.getProblem().getId(), attempt.getId())).willReturn(2);
+
+        AttemptResultResponse result = attemptService.getResult(USER_ID, 1L);
+
+        assertThat(result.finalScore()).isEqualTo(86);
+        assertThat(result.criteria()).hasSize(1);
+        assertThat(result.criteria().get(0).maxScore()).isEqualTo(40);
+        assertThat(result.problemTitle()).isEqualTo("고객 문의 라우팅 판정");
+        assertThat(result.attemptOrdinal()).isEqualTo(2);
+        assertThat(result.maxAttempts()).isEqualTo(3);
+        assertThat(result.tokenBudget()).isEqualTo(3000L);
+        assertThat(result.messages()).hasSize(2);
+        assertThat(result.messages().get(1).tokensUsed()).isEqualTo(500L);
+    }
+
+    @Test
+    void 채점_전_응시의_결과는_점수가_비어있고_상태만_내려간다() {
+        Attempt attempt = inProgressAttempt(activeProblem());
+        attempt.submit("결과물", LocalDateTime.now());
+        given(attemptRepository.findById(1L)).willReturn(Optional.of(attempt));
+
+        AttemptResultResponse result = attemptService.getResult(USER_ID, 1L);
+
+        assertThat(result.status()).isEqualTo("GRADING");
+        assertThat(result.rubricScore()).isNull();
+        assertThat(result.finalScore()).isNull();
+        assertThat(result.criteria()).isEmpty();
     }
 
     // ── 제출 ──────────────────────────────────────────────

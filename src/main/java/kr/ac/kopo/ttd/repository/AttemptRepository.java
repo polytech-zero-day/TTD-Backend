@@ -16,6 +16,9 @@ public interface AttemptRepository extends JpaRepository<Attempt, Long> {
     Optional<Attempt> findByUserIdAndProblemIdAndStatus(Long userId, Long problemId, AttemptStatus status);
     long countByUserIdAndProblemId(Long userId, Long problemId);
 
+    /** 결과 리포트의 응시 회차 계산용 — 해당 응시까지 포함한 누적 횟수. */
+    int countByUserIdAndProblemIdAndIdLessThanEqual(Long userId, Long problemId, Long id);
+
     @Query("""
             select a from Attempt a
             join fetch a.problem

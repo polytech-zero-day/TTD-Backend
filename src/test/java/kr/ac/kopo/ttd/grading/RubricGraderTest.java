@@ -59,6 +59,26 @@ class RubricGraderTest {
     }
 
     @Test
+    void 항목별_criteria가_있으면_함께_파싱한다() {
+        given(aiClient.chatJson(anyString(), anyList()))
+                .willReturn(new AiChatResult("""
+                        {"score": 85, "feedback": "총평",
+                         "criteria": [
+                           {"name": "요구사항 충족", "score": 34, "maxScore": 40, "comment": "대체로 충족"},
+                           {"name": "근거 제시의 구체성", "score": 26, "maxScore": 30, "comment": "구체적"},
+                           {"name": "절차 설계의 타당성", "score": 25, "maxScore": 30, "comment": "타당"}]}""", 800L));
+
+        RubricGrader.RubricResult result = grader().grade(problem(), "결과물", List.of());
+
+        assertThat(result.criteria()).hasSize(3);
+        assertThat(result.criteria().get(0).name()).isEqualTo("요구사항 충족");
+        assertThat(result.criteria().get(0).score()).isEqualTo(34);
+        assertThat(result.criteria().get(0).maxScore()).isEqualTo(40);
+        assertThat(result.criteria().stream().mapToInt(c -> c.score()).sum())
+                .isEqualTo(result.score());
+    }
+
+    @Test
     void JSON_앞뒤에_잡문이_있어도_추출해_파싱한다() {
         given(aiClient.chatJson(anyString(), anyList()))
                 .willReturn(new AiChatResult("채점 결과: {\"score\": 70, \"feedback\": \"보통\"} 이상입니다.", 800L));
