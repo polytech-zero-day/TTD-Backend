@@ -21,7 +21,10 @@ public enum ErrorCode {
     ATTEMPT_QUOTA_EXCEEDED(HttpStatus.CONFLICT, "이 문제의 응시 가능 횟수를 모두 사용했습니다."),
     ATTEMPT_MESSAGE_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "AI 메시지 횟수를 모두 사용했습니다."),
     ATTEMPT_NOT_IN_PROGRESS(HttpStatus.CONFLICT, "진행 중인 응시가 아닙니다. 이미 제출되었거나 시간이 만료되었습니다."),
-    ATTEMPT_NOT_REGRADABLE(HttpStatus.CONFLICT, "채점 실패 상태의 응시만 재채점을 요청할 수 있습니다.");
+    ATTEMPT_NOT_REGRADABLE(HttpStatus.CONFLICT, "채점 실패 상태의 응시만 재채점을 요청할 수 있습니다."),
+    SUBSCRIPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "구독 내역을 찾을 수 없습니다."),
+    SUBSCRIPTION_ALREADY_ACTIVE(HttpStatus.CONFLICT, "이미 활성화된 구독이 있습니다."),
+    PAYMENT_FAILED(HttpStatus.PAYMENT_REQUIRED, "결제에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final String message;

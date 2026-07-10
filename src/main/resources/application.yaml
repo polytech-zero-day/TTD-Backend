@@ -81,3 +81,11 @@ app:
     token-baseline: 3000     # TODO: 효율 v3 산식 확정 시 문제별 컬럼으로 승격
   ai:
     cache-ttl-hours: 24
+  portone:
+    store-id: ${PORTONE_STORE_ID}
+    api-secret: ${PORTONE_API_SECRET}
+    channel-key: ${PORTONE_CHANNEL_KEY}
+    billing-cron: ${PORTONE_BILLING_CRON:0 0 3 * * *}
+  payment:
+    monthly-price-krw: 9900
+    order-name: TTD 월간 구독
