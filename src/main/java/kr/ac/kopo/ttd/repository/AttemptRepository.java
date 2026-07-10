@@ -19,6 +19,10 @@ public interface AttemptRepository extends JpaRepository<Attempt, Long> {
     // 근본적인 중복 생성 차단은 (user_id, problem_id) 부분 유니크 인덱스로 별도 처리 필요(후속).
     Optional<Attempt> findFirstByUserIdAndProblemIdAndStatusOrderByIdDesc(
             Long userId, Long problemId, AttemptStatus status);
+
+    /** 상태 무관 최신 응시 — 채점 중 새로고침 시 세션 복원(GRADING/GRADING_FAILED 이어보기)에 쓴다. */
+    Optional<Attempt> findFirstByUserIdAndProblemIdOrderByIdDesc(Long userId, Long problemId);
+
     long countByUserIdAndProblemId(Long userId, Long problemId);
 
     /** 결과 리포트의 응시 회차 계산용 — 해당 응시까지 포함한 누적 횟수. */
