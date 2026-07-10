@@ -97,14 +97,35 @@ class SubscriptionServiceTest {
     }
 
     @Test
-    void 첫_결제가_실패하면_구독이_생성되지_않고_예외가_발생한다() {
-        stubSaves();
+    void 첫_결제가_실패하면_실패_원장을_남기고_구독을_취소한_뒤_예외를_던진다() {
+        // noRollbackFor로 실패 기록(Payment FAILED, Subscription CANCELED)이 보존되어야 한다
+        Payment saved = Payment.builder()
+                .userId(USER_ID).subscriptionId(1L).portonePaymentId("sub-1-x").amount(MONTHLY_PRICE_KRW).build();
+        given(subscriptionRepository.save(any(Subscription.class))).willAnswer(invocation -> invocation.getArgument(0));
+        given(paymentRepository.save(any(Payment.class))).willReturn(saved);
         given(subscriptionRepository.findByUserIdAndStatusIn(eq(USER_ID), any())).willReturn(Optional.empty());
         given(portOneClient.payWithBillingKey(anyString(), anyString(), anyLong(), anyString()))
                 .willReturn(PortOnePaymentResult.failed("CARD_DECLINED"));
 
         assertThatThrownBy(() -> subscriptionService.subscribe(USER_ID, new SubscriptionSubscribeRequest("billing-key-1")))
                 .isInstanceOf(PaymentFailedException.class);
+
+        assertThat(saved.getStatus()).isEqualTo(kr.ac.kopo.ttd.domain.PaymentStatus.FAILED);
+        assertThat(saved.getFailReason()).isEqualTo("CARD_DECLINED");
+    }
+
+    @Test
+    void 취소된_구독은_재결제하지_않고_스킵한다() {
+        // due 조회~청구 사이에 취소된 구독 — 청구도, 결제 시도도 하지 않아야 한다
+        Subscription subscription = activeSubscription();
+        subscription.cancel(); // CANCELED
+        given(subscriptionRepository.findById(1L)).willReturn(Optional.of(subscription));
+
+        subscriptionService.chargeSingleSubscription(1L);
+
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELED);
+        verify(portOneClient, never()).payWithBillingKey(anyString(), anyString(), anyLong(), anyString());
+        verify(paymentRepository, never()).save(any(Payment.class));
     }
 
     // ── 취소 ──────────────────────────────────────────────
