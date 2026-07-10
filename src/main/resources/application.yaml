@@ -80,6 +80,8 @@ app:
     message-limit: 10
   ai:
     cache-ttl-hours: 24
+    # 관리자 모델 설정에서 선택 가능한 모델 목록 (PUT 검증 + 프론트 셀렉트 원천)
+    available-models: ${AI_AVAILABLE_MODELS:gpt-5.4-mini,gpt-5.4,gpt-5.4-nano}
   portone:
     store-id: ${PORTONE_STORE_ID}
     api-secret: ${PORTONE_API_SECRET}

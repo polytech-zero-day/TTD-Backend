@@ -5,6 +5,7 @@ import tools.jackson.databind.ObjectMapper;
 import kr.ac.kopo.ttd.ai.AiChatResult;
 import kr.ac.kopo.ttd.ai.AiClient;
 import kr.ac.kopo.ttd.domain.AttemptMessage;
+import kr.ac.kopo.ttd.domain.AiPurpose;
 import kr.ac.kopo.ttd.domain.Problem;
 import kr.ac.kopo.ttd.domain.RubricCriterion;
 import lombok.RequiredArgsConstructor;
@@ -60,7 +61,7 @@ public class RubricGrader {
                 problem.getTitle(), String.join(" / ", problem.getRequirements()),
                 artifact == null ? "(빈 제출)" : artifact, conversation);
 
-        AiChatResult result = aiClient.chatJson(GRADING_SYSTEM_PROMPT, List.of(AiClient.user(userPrompt)));
+        AiChatResult result = aiClient.chatJson(GRADING_SYSTEM_PROMPT, List.of(AiClient.user(userPrompt)), AiPurpose.GRADING);
         try {
             return objectMapper.readValue(extractJson(result.content()), RubricResult.class);
         } catch (Exception e) {
