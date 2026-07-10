@@ -52,32 +52,36 @@ public class AttemptService {
         this.timeLimitMinutes = timeLimitMinutes;
     }
 
-    /** 응시 시작. 진행 중 세션이 있으면 그대로 반환한다(멱등 — 새로고침 복원과 동일 응답). */
+    /**
+     * 응시 시작 겸 복원(멱등). 최신 응시가 아직 완료되지 않았으면(진행 중·채점 중·채점 실패) 그 세션을
+     * 그대로 이어준다 — 채점 대기 중 새로고침해도 새 응시가 생기지 않고 채점 폴링/재채점 UI로 복원된다.
+     * 완료(GRADED)됐거나 응시 이력이 없으면 새 응시를 만든다(재응시 포함, 횟수 제한 검증).
+     */
     @Transactional
     public AttemptSnapshotResponse start(Long userId, AttemptStartRequest request) {
         Problem problem = problemRepository.findByIdAndStatus(request.problemId(), ProblemStatus.ACTIVE)
                 .orElseThrow(ProblemNotFoundException::new);
 
-        return attemptRepository
-                .findFirstByUserIdAndProblemIdAndStatusOrderByIdDesc(userId, problem.getId(), AttemptStatus.IN_PROGRESS)
-                .map(attempt -> {
-                    // 프론트는 타이머 만료 시 이 API를 재호출해 서버 만료 처리를 유도한다.
-                    // 여기서 자동 제출해야 스냅샷 status가 GRADING으로 내려가고 프론트가 채점 폴링으로 전환된다.
-                    expireIfNeeded(attempt);
-                    return toSnapshot(attempt);
-                })
-                .orElseGet(() -> {
-                    if (attemptRepository.countByUserIdAndProblemId(userId, problem.getId())
-                            >= problem.getMaxAttempts()) {
-                        throw new AttemptQuotaExceededException();
-                    }
-                    Attempt attempt = attemptRepository.save(Attempt.builder()
-                            .userId(userId)
-                            .problem(problem)
-                            .endsAt(LocalDateTime.now().plusMinutes(timeLimitMinutes))
-                            .build());
-                    return toSnapshot(attempt);
-                });
+        Attempt latest = attemptRepository
+                .findFirstByUserIdAndProblemIdOrderByIdDesc(userId, problem.getId())
+                .orElse(null);
+        if (latest != null && latest.getStatus() != AttemptStatus.GRADED) {
+            // 프론트는 타이머 만료 시에도 이 API를 재호출한다. IN_PROGRESS면 여기서 자동 제출되어
+            // 스냅샷 status가 GRADING으로 내려가고, GRADING/GRADING_FAILED면 해당 상태 그대로 복원된다.
+            expireIfNeeded(latest);
+            return toSnapshot(latest);
+        }
+
+        if (attemptRepository.countByUserIdAndProblemId(userId, problem.getId())
+                >= problem.getMaxAttempts()) {
+            throw new AttemptQuotaExceededException();
+        }
+        Attempt attempt = attemptRepository.save(Attempt.builder()
+                .userId(userId)
+                .problem(problem)
+                .endsAt(LocalDateTime.now().plusMinutes(timeLimitMinutes))
+                .build());
+        return toSnapshot(attempt);
     }
 
     /** 새로고침 복원: 진행 중 세션 스냅샷. 만료됐으면 자동 제출 후 예외로 결과 조회를 유도. */
