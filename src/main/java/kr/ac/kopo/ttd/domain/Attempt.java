@@ -26,6 +26,12 @@ public class Attempt {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** 낙관적 락 — 동시 대화·제출 시 사용량(토큰) 갱신이 last-writer-wins로 유실되는 것을 막는다. */
+    @Version
+    @Column(nullable = false)
+    @Builder.Default
+    private long version = 0;
+
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
