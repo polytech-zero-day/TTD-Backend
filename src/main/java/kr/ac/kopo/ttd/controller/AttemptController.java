@@ -11,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/attempts")
 @RequiredArgsConstructor
@@ -64,5 +66,17 @@ public class AttemptController {
     public ApiResponse<AttemptResultResponse> regrade(
             @AuthenticationPrincipal Long userId, @PathVariable Long id) {
         return ApiResponse.success(attemptService.regrade(userId, id));
+    }
+
+    @GetMapping("/my")
+    public ApiResponse<List<MyAttemptSummaryResponse>> getMyAttempts(
+            @AuthenticationPrincipal Long userId) {
+        return ApiResponse.success(attemptService.getMyAttempts(userId));
+    }
+
+    @GetMapping("/my/stats")
+    public ApiResponse<MyAttemptStatsResponse> getMyStats(
+            @AuthenticationPrincipal Long userId) {
+        return ApiResponse.success(attemptService.getMyStats(userId));
     }
 }
