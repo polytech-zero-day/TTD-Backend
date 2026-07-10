@@ -79,4 +79,9 @@ public class AttemptController {
             @AuthenticationPrincipal Long userId) {
         return ApiResponse.success(attemptService.getMyStats(userId));
     }
+
+    @GetMapping("/scatter")
+    public ApiResponse<List<ScatterPointResponse>> getScatter() {
+        return ApiResponse.success(attemptService.getScatterData());
+    }
 }

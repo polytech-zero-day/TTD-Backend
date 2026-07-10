@@ -3,6 +3,7 @@ package kr.ac.kopo.ttd.repository;
 import kr.ac.kopo.ttd.domain.Attempt;
 import kr.ac.kopo.ttd.domain.AttemptStatus;
 import kr.ac.kopo.ttd.dto.MyAttemptStatsResponse;
+import kr.ac.kopo.ttd.dto.ScatterPointResponse;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -38,4 +39,11 @@ public interface AttemptRepository extends JpaRepository<Attempt, Long> {
             """)
     MyAttemptStatsResponse findMyStats(@Param("userId") Long userId,
                                        @Param("graded") AttemptStatus graded);
+
+    @Query("""
+            select new kr.ac.kopo.ttd.dto.ScatterPointResponse(a.rubricScore, a.efficiencyScore)
+            from Attempt a
+            where a.status = :graded
+            """)
+    List<ScatterPointResponse> findScatterData(@Param("graded") AttemptStatus graded);
 }

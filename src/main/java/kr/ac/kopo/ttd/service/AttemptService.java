@@ -150,6 +150,10 @@ public class AttemptService {
         return attemptRepository.findMyStats(userId, AttemptStatus.GRADED);
     }
 
+    public List<ScatterPointResponse> getScatterData() {
+        return attemptRepository.findScatterData(AttemptStatus.GRADED);
+    }
+
     /** 채점 실패(GRADING_FAILED) 상태의 응시를 재채점 큐에 다시 올린다. */
     @Transactional
     public AttemptResultResponse regrade(Long userId, Long attemptId) {
