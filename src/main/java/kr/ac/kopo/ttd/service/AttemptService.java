@@ -59,8 +59,13 @@ public class AttemptService {
                 .orElseThrow(ProblemNotFoundException::new);
 
         return attemptRepository
-                .findByUserIdAndProblemIdAndStatus(userId, problem.getId(), AttemptStatus.IN_PROGRESS)
-                .map(this::toSnapshot)
+                .findFirstByUserIdAndProblemIdAndStatusOrderByIdDesc(userId, problem.getId(), AttemptStatus.IN_PROGRESS)
+                .map(attempt -> {
+                    // 프론트는 타이머 만료 시 이 API를 재호출해 서버 만료 처리를 유도한다.
+                    // 여기서 자동 제출해야 스냅샷 status가 GRADING으로 내려가고 프론트가 채점 폴링으로 전환된다.
+                    expireIfNeeded(attempt);
+                    return toSnapshot(attempt);
+                })
                 .orElseGet(() -> {
                     if (attemptRepository.countByUserIdAndProblemId(userId, problem.getId())
                             >= problem.getMaxAttempts()) {
@@ -79,13 +84,15 @@ public class AttemptService {
     @Transactional
     public AttemptSnapshotResponse getCurrent(Long userId, Long problemId) {
         Attempt attempt = attemptRepository
-                .findByUserIdAndProblemIdAndStatus(userId, problemId, AttemptStatus.IN_PROGRESS)
+                .findFirstByUserIdAndProblemIdAndStatusOrderByIdDesc(userId, problemId, AttemptStatus.IN_PROGRESS)
                 .orElseThrow(AttemptNotFoundException::new);
         expireIfNeeded(attempt);
         return toSnapshot(attempt);
     }
 
-    @Transactional
+    // noRollbackFor: 만료로 자동 제출된 뒤 requireInProgress가 던지는 예외에도 자동 제출을 커밋해야 한다
+    // (롤백되면 GRADING 전환과 afterCommit 채점 발행이 모두 무효가 되어 응시가 IN_PROGRESS로 고착된다)
+    @Transactional(noRollbackFor = AttemptNotInProgressException.class)
     public AttemptMessageResponse sendMessage(Long userId, Long attemptId, AttemptMessageRequest request) {
         Attempt attempt = findOwnedAttempt(userId, attemptId);
         expireIfNeeded(attempt);
@@ -115,16 +122,18 @@ public class AttemptService {
                 AttemptUsageResponse.of(attempt, messageLimit, attempt.getProblem().getTokenBudget()));
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = AttemptNotInProgressException.class)
     public void updateDraft(Long userId, Long attemptId, DraftUpdateRequest request) {
         Attempt attempt = findOwnedAttempt(userId, attemptId);
+        expireIfNeeded(attempt); // 만료 후 draft 저장은 자동 제출로 수렴시키고 거부한다
         requireInProgress(attempt);
         attempt.updateDraft(request.draft());
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = AttemptNotInProgressException.class)
     public AttemptResultResponse submit(Long userId, Long attemptId) {
         Attempt attempt = findOwnedAttempt(userId, attemptId);
+        expireIfNeeded(attempt); // 만료 후 늦은 제출은 이미 자동 제출된 것으로 처리 (시간 우회 방지)
         requireInProgress(attempt);
         attempt.submit(attempt.getDraft(), LocalDateTime.now());
         gradingProducer.requestGrading(attempt.getId());

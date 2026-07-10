@@ -44,7 +44,7 @@ public class RubricGrader {
 
     public RubricResult grade(Problem problem, String artifact, List<AttemptMessage> history) {
         String conversation = history.stream()
-                .map(m -> m.getRole() + ": " + m.getContent())
+                .map(m -> m.getRole() + ": " + neutralizeDelimiters(m.getContent()))
                 .collect(Collectors.joining("\n"));
 
         String userPrompt = """
@@ -59,7 +59,7 @@ public class RubricGrader {
                 %s
                 [/DATA]""".formatted(
                 problem.getTitle(), String.join(" / ", problem.getRequirements()),
-                artifact == null ? "(빈 제출)" : artifact, conversation);
+                artifact == null ? "(빈 제출)" : neutralizeDelimiters(artifact), conversation);
 
         AiChatResult result = aiClient.chatJson(GRADING_SYSTEM_PROMPT, List.of(AiClient.user(userPrompt)), AiPurpose.GRADING);
         try {
@@ -67,6 +67,15 @@ public class RubricGrader {
         } catch (Exception e) {
             throw new IllegalStateException("루브릭 채점 응답 파싱에 실패했습니다: " + result.content(), e);
         }
+    }
+
+    /**
+     * 사용자 텍스트가 [DATA] 블록을 조기 종료시켜 채점 지시를 주입하는 것을 막는다.
+     * 대괄호 구분자를 파괴해 데이터로만 남긴다(프롬프트 레벨 방어와 이중화).
+     */
+    private String neutralizeDelimiters(String content) {
+        if (content == null) return "";
+        return content.replace("[/DATA]", "(/DATA)").replace("[DATA", "(DATA");
     }
 
     /** 모델이 JSON 앞뒤에 텍스트를 붙이는 경우 대비 최소 방어. */

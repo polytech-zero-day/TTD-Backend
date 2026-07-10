@@ -47,6 +47,10 @@ class GradingConsumerTest {
     @Mock
     private Channel channel;
 
+    // TransactionTemplate이 콜백을 동기 실행하도록만 필요 — getTransaction/commit은 no-op mock
+    @Mock
+    private org.springframework.transaction.PlatformTransactionManager transactionManager;
+
     @InjectMocks
     private GradingConsumer gradingConsumer;
 

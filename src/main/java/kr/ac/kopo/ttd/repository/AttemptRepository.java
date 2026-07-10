@@ -14,7 +14,11 @@ import java.util.List;
 import java.util.Optional;
 
 public interface AttemptRepository extends JpaRepository<Attempt, Long> {
-    Optional<Attempt> findByUserIdAndProblemIdAndStatus(Long userId, Long problemId, AttemptStatus status);
+    // findFirst...OrderByIdDesc: 동시 시작 레이스로 IN_PROGRESS가 2건 생겨도
+    // IncorrectResultSizeDataAccessException으로 터지지 않게 최신 1건을 취한다(크래시 방어).
+    // 근본적인 중복 생성 차단은 (user_id, problem_id) 부분 유니크 인덱스로 별도 처리 필요(후속).
+    Optional<Attempt> findFirstByUserIdAndProblemIdAndStatusOrderByIdDesc(
+            Long userId, Long problemId, AttemptStatus status);
     long countByUserIdAndProblemId(Long userId, Long problemId);
 
     /** 결과 리포트의 응시 회차 계산용 — 해당 응시까지 포함한 누적 횟수. */

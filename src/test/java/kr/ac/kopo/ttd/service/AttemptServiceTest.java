@@ -104,13 +104,21 @@ class AttemptServiceTest {
                 .build();
     }
 
+    private Attempt expiredAttempt(Problem problem) {
+        return Attempt.builder()
+                .userId(USER_ID)
+                .problem(problem)
+                .endsAt(LocalDateTime.now().minusMinutes(1)) // 이미 만료
+                .build();
+    }
+
     // ── 시작 ──────────────────────────────────────────────
 
     @Test
     void 응시를_시작하면_새_세션을_생성한다() {
         Problem problem = activeProblem();
         given(problemRepository.findByIdAndStatus(1L, ProblemStatus.ACTIVE)).willReturn(Optional.of(problem));
-        given(attemptRepository.findByUserIdAndProblemIdAndStatus(USER_ID, problem.getId(), AttemptStatus.IN_PROGRESS))
+        given(attemptRepository.findFirstByUserIdAndProblemIdAndStatusOrderByIdDesc(USER_ID, problem.getId(), AttemptStatus.IN_PROGRESS))
                 .willReturn(Optional.empty());
         given(attemptRepository.countByUserIdAndProblemId(USER_ID, problem.getId())).willReturn(0L);
         given(attemptRepository.save(any(Attempt.class))).willAnswer(invocation -> invocation.getArgument(0));
@@ -130,7 +138,7 @@ class AttemptServiceTest {
         Problem problem = activeProblem();
         Attempt existing = inProgressAttempt(problem);
         given(problemRepository.findByIdAndStatus(1L, ProblemStatus.ACTIVE)).willReturn(Optional.of(problem));
-        given(attemptRepository.findByUserIdAndProblemIdAndStatus(USER_ID, problem.getId(), AttemptStatus.IN_PROGRESS))
+        given(attemptRepository.findFirstByUserIdAndProblemIdAndStatusOrderByIdDesc(USER_ID, problem.getId(), AttemptStatus.IN_PROGRESS))
                 .willReturn(Optional.of(existing));
         given(messageRepository.findByAttemptIdOrderByIdAsc(any())).willReturn(List.of());
 
@@ -144,7 +152,7 @@ class AttemptServiceTest {
     void 응시_횟수를_모두_사용하면_예외() {
         Problem problem = activeProblem();
         given(problemRepository.findByIdAndStatus(1L, ProblemStatus.ACTIVE)).willReturn(Optional.of(problem));
-        given(attemptRepository.findByUserIdAndProblemIdAndStatus(USER_ID, problem.getId(), AttemptStatus.IN_PROGRESS))
+        given(attemptRepository.findFirstByUserIdAndProblemIdAndStatusOrderByIdDesc(USER_ID, problem.getId(), AttemptStatus.IN_PROGRESS))
                 .willReturn(Optional.empty());
         given(attemptRepository.countByUserIdAndProblemId(USER_ID, problem.getId())).willReturn(3L);
 
@@ -297,6 +305,38 @@ class AttemptServiceTest {
     }
 
     @Test
+    void 만료된_응시를_제출하면_마지막_draft로_자동제출되고_채점을_요청한다() {
+        // 시간 만료 후 늦은 제출 — 자동 제출로 수렴하고, 이미 제출됨을 알리는 예외를 던진다
+        Attempt attempt = expiredAttempt(activeProblem());
+        attempt.updateDraft("만료 직전 draft");
+        given(attemptRepository.findById(1L)).willReturn(Optional.of(attempt));
+
+        assertThatThrownBy(() -> attemptService.submit(USER_ID, 1L))
+                .isInstanceOf(AttemptNotInProgressException.class);
+
+        // noRollbackFor 덕에 자동 제출이 유지되어야 한다
+        assertThat(attempt.getStatus()).isEqualTo(AttemptStatus.GRADING);
+        assertThat(attempt.getArtifact()).isEqualTo("만료 직전 draft");
+        verify(gradingProducer).requestGrading(attempt.getId());
+    }
+
+    @Test
+    void 시작_시_진행중_세션이_만료됐으면_자동제출되어_GRADING_스냅샷을_반환한다() {
+        // 프론트가 타이머 만료 시 start를 재호출해 서버 만료 처리를 유도하는 경로
+        Problem problem = activeProblem();
+        Attempt expired = expiredAttempt(problem);
+        given(problemRepository.findByIdAndStatus(1L, ProblemStatus.ACTIVE)).willReturn(Optional.of(problem));
+        given(attemptRepository.findFirstByUserIdAndProblemIdAndStatusOrderByIdDesc(
+                USER_ID, problem.getId(), AttemptStatus.IN_PROGRESS)).willReturn(Optional.of(expired));
+        given(messageRepository.findByAttemptIdOrderByIdAsc(any())).willReturn(List.of());
+
+        AttemptSnapshotResponse response = attemptService.start(USER_ID, new AttemptStartRequest(1L));
+
+        assertThat(response.status()).isEqualTo("GRADING");
+        verify(gradingProducer).requestGrading(any());
+    }
+
+    @Test
     void 제출된_세션에는_draft를_저장할_수_없다() {
         Attempt attempt = inProgressAttempt(activeProblem());
         attempt.submit("첫 제출", LocalDateTime.now());
@@ -310,7 +350,7 @@ class AttemptServiceTest {
 
     @Test
     void 진행_중_세션이_없으면_복원_조회시_예외() {
-        given(attemptRepository.findByUserIdAndProblemIdAndStatus(USER_ID, 1L, AttemptStatus.IN_PROGRESS))
+        given(attemptRepository.findFirstByUserIdAndProblemIdAndStatusOrderByIdDesc(USER_ID, 1L, AttemptStatus.IN_PROGRESS))
                 .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> attemptService.getCurrent(USER_ID, 1L))
