@@ -1,11 +1,13 @@
 package kr.ac.kopo.ttd.domain;
 
 import jakarta.persistence.*;
+import kr.ac.kopo.ttd.common.converter.RubricCriterionListJsonConverter;
 import kr.ac.kopo.ttd.common.exception.InvalidStatusTransitionException;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 문제 응시 세션 1회. 사용자·문제당 진행 중(IN_PROGRESS) 세션은 1개만 허용하며,
@@ -62,8 +64,17 @@ public class Attempt {
     @Column(name = "efficiency_score")
     private Integer efficiencyScore;
 
+    /** 종합 점수 = 루브릭×0.6 + 효율×0.4 (가중치는 채점 시점 값으로 고정 저장). */
+    @Column(name = "final_score")
+    private Integer finalScore;
+
     @Column(columnDefinition = "text")
     private String feedback;
+
+    /** 루브릭 항목별 점수·코멘트 (JSON 배열). 결과 리포트의 항목별 표시에 쓰인다. */
+    @Convert(converter = RubricCriterionListJsonConverter.class)
+    @Column(name = "rubric_detail", columnDefinition = "text")
+    private List<RubricCriterion> rubricDetail;
 
     @CreationTimestamp
     @Column(name = "started_at", updatable = false)
@@ -98,11 +109,14 @@ public class Attempt {
         changeStatus(AttemptStatus.GRADING);
     }
 
-    public void grade(int rubricScore, int efficiencyScore, String feedback) {
+    public void grade(int rubricScore, int efficiencyScore, int finalScore,
+                      String feedback, List<RubricCriterion> rubricDetail) {
         changeStatus(AttemptStatus.GRADED);
         this.rubricScore = rubricScore;
         this.efficiencyScore = efficiencyScore;
+        this.finalScore = finalScore;
         this.feedback = feedback;
+        this.rubricDetail = rubricDetail;
     }
 
     private void changeStatus(AttemptStatus target) {

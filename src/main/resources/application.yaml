@@ -78,7 +78,6 @@ app:
   attempt:
     time-limit-minutes: 45
     message-limit: 10
-    token-baseline: 3000     # TODO: 효율 v3 산식 확정 시 문제별 컬럼으로 승격
   ai:
     cache-ttl-hours: 24
   portone:

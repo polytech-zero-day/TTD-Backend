@@ -71,6 +71,11 @@ public class Problem {
     @Builder.Default
     private int maxAttempts = 3;
 
+    /** 효율 점수의 기준 토큰 예산. 문제 설계 시 "모범 풀이 소요 토큰 × 1.5" 기준으로 산정한다. */
+    @Column(name = "token_budget", nullable = false)
+    @Builder.Default
+    private long tokenBudget = 3000;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
