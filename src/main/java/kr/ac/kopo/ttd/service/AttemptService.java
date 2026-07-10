@@ -101,7 +101,7 @@ public class AttemptService {
                         : AiClient.assistant(m.getContent())).toList());
         aiHistory.add(AiClient.user(request.content()));
 
-        AiChatResult result = aiClient.chat(CHAT_SYSTEM_PROMPT, aiHistory);
+        AiChatResult result = aiClient.chat(CHAT_SYSTEM_PROMPT, aiHistory, AiPurpose.CHAT);
 
         messageRepository.save(AttemptMessage.builder()
                 .attempt(attempt).role(MessageRole.USER).content(request.content()).build());

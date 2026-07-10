@@ -20,6 +20,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -49,7 +50,7 @@ class RubricGraderTest {
 
     @Test
     void 정상_JSON_응답을_점수와_피드백으로_파싱한다() {
-        given(aiClient.chatJson(anyString(), anyList()))
+        given(aiClient.chatJson(anyString(), anyList(), any()))
                 .willReturn(new AiChatResult("{\"score\": 92, \"feedback\": \"요구사항 충족도가 높습니다.\"}", 800L));
 
         RubricGrader.RubricResult result = grader().grade(problem(), "결과물", List.of());
@@ -60,7 +61,7 @@ class RubricGraderTest {
 
     @Test
     void 항목별_criteria가_있으면_함께_파싱한다() {
-        given(aiClient.chatJson(anyString(), anyList()))
+        given(aiClient.chatJson(anyString(), anyList(), any()))
                 .willReturn(new AiChatResult("""
                         {"score": 85, "feedback": "총평",
                          "criteria": [
@@ -80,7 +81,7 @@ class RubricGraderTest {
 
     @Test
     void JSON_앞뒤에_잡문이_있어도_추출해_파싱한다() {
-        given(aiClient.chatJson(anyString(), anyList()))
+        given(aiClient.chatJson(anyString(), anyList(), any()))
                 .willReturn(new AiChatResult("채점 결과: {\"score\": 70, \"feedback\": \"보통\"} 이상입니다.", 800L));
 
         RubricGrader.RubricResult result = grader().grade(problem(), "결과물", List.of());
@@ -90,7 +91,7 @@ class RubricGraderTest {
 
     @Test
     void 응답에_JSON이_없으면_예외() {
-        given(aiClient.chatJson(anyString(), anyList()))
+        given(aiClient.chatJson(anyString(), anyList(), any()))
                 .willReturn(new AiChatResult("채점할 수 없습니다.", 800L));
 
         assertThatThrownBy(() -> grader().grade(problem(), "결과물", List.of()))
@@ -101,7 +102,7 @@ class RubricGraderTest {
     @Test
     void 결과물과_대화_이력은_DATA_구분자_블록_안에_데이터로만_전달된다() {
         // 인젝션 방어의 전제: 사용자 텍스트가 지시가 아닌 [DATA] 블록 내부 데이터로 격리되는지 검증
-        given(aiClient.chatJson(anyString(), anyList()))
+        given(aiClient.chatJson(anyString(), anyList(), any()))
                 .willReturn(new AiChatResult("{\"score\": 50, \"feedback\": \"ok\"}", 800L));
         AttemptMessage message = AttemptMessage.builder()
                 .role(MessageRole.USER)
@@ -112,7 +113,7 @@ class RubricGraderTest {
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<Message>> captor = ArgumentCaptor.forClass(List.class);
-        verify(aiClient).chatJson(anyString(), captor.capture());
+        verify(aiClient).chatJson(anyString(), captor.capture(), any());
         String userPrompt = captor.getValue().get(0).getText();
         assertThat(userPrompt)
                 .contains("[DATA: 응시자 최종 결과물]")

@@ -169,7 +169,7 @@ class AttemptServiceTest {
         Attempt attempt = inProgressAttempt(activeProblem());
         given(attemptRepository.findById(1L)).willReturn(Optional.of(attempt));
         given(messageRepository.findByAttemptIdOrderByIdAsc(1L)).willReturn(List.of());
-        given(aiClient.chat(anyString(), anyList())).willReturn(new AiChatResult("AI 답변", 500L));
+        given(aiClient.chat(anyString(), anyList(), any())).willReturn(new AiChatResult("AI 답변", 500L));
         given(messageRepository.save(any(AttemptMessage.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         AttemptMessageResponse response = attemptService.sendMessage(USER_ID, 1L, new AttemptMessageRequest("질문"));
@@ -191,7 +191,7 @@ class AttemptServiceTest {
         assertThatThrownBy(() -> attemptService.sendMessage(USER_ID, 1L, new AttemptMessageRequest("질문")))
                 .isInstanceOf(AttemptMessageLimitExceededException.class);
 
-        verify(aiClient, never()).chat(anyString(), anyList());
+        verify(aiClient, never()).chat(anyString(), anyList(), any());
     }
 
     @Test
@@ -210,7 +210,7 @@ class AttemptServiceTest {
         assertThat(attempt.getStatus()).isEqualTo(AttemptStatus.GRADING);
         assertThat(attempt.getArtifact()).isEqualTo("마지막 저장본");
         verify(gradingProducer).requestGrading(attempt.getId());
-        verify(aiClient, never()).chat(anyString(), anyList());
+        verify(aiClient, never()).chat(anyString(), anyList(), any());
     }
 
     @Test
