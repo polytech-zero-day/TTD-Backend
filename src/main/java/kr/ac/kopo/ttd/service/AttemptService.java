@@ -138,6 +138,18 @@ public class AttemptService {
         return AttemptResultResponse.from(findOwnedAttempt(userId, attemptId));
     }
 
+    public List<MyAttemptSummaryResponse> getMyAttempts(Long userId) {
+        return attemptRepository
+                .findMyAttempts(userId, List.of(AttemptStatus.IN_PROGRESS, AttemptStatus.GRADED))
+                .stream()
+                .map(MyAttemptSummaryResponse::from)
+                .toList();
+    }
+
+    public MyAttemptStatsResponse getMyStats(Long userId) {
+        return attemptRepository.findMyStats(userId, AttemptStatus.GRADED);
+    }
+
     /** 채점 실패(GRADING_FAILED) 상태의 응시를 재채점 큐에 다시 올린다. */
     @Transactional
     public AttemptResultResponse regrade(Long userId, Long attemptId) {
