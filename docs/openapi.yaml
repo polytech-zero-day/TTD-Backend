@@ -198,6 +198,27 @@ paths:
                 $ref: "#/components/schemas/ApiResponseAttemptResultResponse"
       security:
       - bearerAuth: []
+  /api/attempts/{id}/regrade:
+    post:
+      tags:
+      - attempt-controller
+      operationId: regrade
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseAttemptResultResponse"
+      security:
+      - bearerAuth: []
   /api/attempts/{id}/messages:
     post:
       tags:
@@ -289,6 +310,42 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ApiResponseAdminProblemResponse"
+      security:
+      - bearerAuth: []
+  /api/admin/calibration/run:
+    post:
+      tags:
+      - admin-calibration-controller
+      operationId: run
+      parameters:
+      - name: highMin
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 70
+      - name: midMin
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 40
+      - name: tolerance
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 15
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseCalibrationRunResponse"
       security:
       - bearerAuth: []
   /api/admin/users/{id}:
@@ -886,6 +943,102 @@ components:
       - sourceType
       - title
       - type
+    ApiResponseCalibrationRunResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/CalibrationRunResponse"
+        errorCode:
+          type: string
+        message:
+          type: string
+    CalibrationRunResponse:
+      type: object
+      properties:
+        config:
+          $ref: "#/components/schemas/Config"
+        summary:
+          $ref: "#/components/schemas/Summary"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/Row"
+    Config:
+      type: object
+      properties:
+        highMin:
+          type: integer
+          format: int32
+        midMin:
+          type: integer
+          format: int32
+        tolerance:
+          type: integer
+          format: int32
+    Row:
+      type: object
+      properties:
+        sampleId:
+          type: integer
+          format: int64
+        problemTitle:
+          type: string
+        expectedTier:
+          type: string
+          enum:
+          - 상
+          - 중
+          - 하
+        referenceScore:
+          type: integer
+          format: int32
+        gradedScore:
+          type: integer
+          format: int32
+        gradedTier:
+          type: string
+          enum:
+          - 상
+          - 중
+          - 하
+        tierMatch:
+          type: boolean
+        scoreDiff:
+          type: integer
+          format: int32
+        placeholder:
+          type: boolean
+        error:
+          type: string
+    Summary:
+      type: object
+      properties:
+        total:
+          type: integer
+          format: int32
+        placeholderCount:
+          type: integer
+          format: int32
+        errorCount:
+          type: integer
+          format: int32
+        tierMatches:
+          type: integer
+          format: int32
+        tierAgreementRate:
+          type: number
+          format: double
+        validTierAgreementRate:
+          type: number
+          format: double
+        avgAbsScoreDiff:
+          type: number
+          format: double
+        withinToleranceRate:
+          type: number
+          format: double
     UserUpdateRequest:
       type: object
       properties:
