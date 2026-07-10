@@ -26,8 +26,8 @@ paths:
               $ref: "#/components/schemas/DraftUpdateRequest"
         required: true
       responses:
-        "200":
-          description: OK
+        "204":
+          description: No Content
       security:
       - bearerAuth: []
   /api/admin/problems/{id}:
@@ -89,8 +89,8 @@ paths:
           type: integer
           format: int64
       responses:
-        "200":
-          description: OK
+        "204":
+          description: No Content
       security:
       - bearerAuth: []
   /api/auth/signup:
@@ -105,8 +105,8 @@ paths:
               $ref: "#/components/schemas/SignupRequest"
         required: true
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           content:
             '*/*':
               schema:
@@ -135,8 +135,8 @@ paths:
       - auth-controller
       operationId: logout
       responses:
-        "200":
-          description: OK
+        "204":
+          description: No Content
       security:
       - bearerAuth: []
   /api/auth/login:
@@ -169,8 +169,8 @@ paths:
               $ref: "#/components/schemas/AttemptStartRequest"
         required: true
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           content:
             '*/*':
               schema:
@@ -271,8 +271,8 @@ paths:
               $ref: "#/components/schemas/UserCreateRequest"
         required: true
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           content:
             '*/*':
               schema:
@@ -304,8 +304,8 @@ paths:
               $ref: "#/components/schemas/ProblemCreateRequest"
         required: true
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           content:
             '*/*':
               schema:
@@ -381,8 +381,8 @@ paths:
           type: integer
           format: int64
       responses:
-        "200":
-          description: OK
+        "204":
+          description: No Content
       security:
       - bearerAuth: []
     patch:
@@ -513,6 +513,49 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ApiResponseAttemptSnapshotResponse"
+      security:
+      - bearerAuth: []
+  /api/subscriptions:
+    post:
+      tags:
+      - subscription-controller
+      operationId: subscribe
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionSubscribeRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseSubscriptionResponse"
+      security:
+      - bearerAuth: []
+    delete:
+      tags:
+      - subscription-controller
+      operationId: cancel
+      responses:
+        "204":
+          description: No Content
+      security:
+      - bearerAuth: []
+  /api/subscriptions/me:
+    get:
+      tags:
+      - subscription-controller
+      operationId: getMySubscription
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseSubscriptionResponse"
       security:
       - bearerAuth: []
 components:
@@ -1186,6 +1229,44 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AdminProblemResponse"
+        errorCode:
+          type: string
+        message:
+          type: string
+    SubscriptionSubscribeRequest:
+      type: object
+      properties:
+        billingKey:
+          type: string
+          minLength: 1
+      required:
+      - billingKey
+    SubscriptionResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - PAST_DUE
+          - CANCELED
+          - EXPIRED
+        currentPeriodStart:
+          type: string
+          format: date-time
+        nextBillingAt:
+          type: string
+          format: date-time
+        canceledAt:
+          type: string
+          format: date-time
+    ApiResponseSubscriptionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/SubscriptionResponse"
         errorCode:
           type: string
         message:
