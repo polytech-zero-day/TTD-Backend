@@ -59,7 +59,7 @@ public class PortOneClient {
                             new BillingKeyPaymentRequest.Amount(amountKrw), "KRW"))
                     .retrieve()
                     .body(PortOnePaymentApiResponse.class);
-            return toResult(response);
+            return toResult(response, amountKrw);
         } catch (RestClientException e) {
             log.warn("PortOne 빌링키 결제 요청 실패: paymentId={}", paymentId, e);
             return PortOnePaymentResult.failed("PORTONE_API_ERROR: " + e.getMessage());
@@ -75,12 +75,21 @@ public class PortOneClient {
         }
     }
 
-    private PortOnePaymentResult toResult(PortOnePaymentApiResponse response) {
+    private PortOnePaymentResult toResult(PortOnePaymentApiResponse response, long expectedAmountKrw) {
         if (response == null || !"PAID".equalsIgnoreCase(response.status())) {
             String reason = response != null && response.failure() != null
                     ? response.failure().reason()
                     : (response != null ? response.status() : "EMPTY_RESPONSE");
             return PortOnePaymentResult.failed(reason);
+        }
+        // 승인 금액 검증: 응답 금액이 요청 금액과 다르면 성공으로 처리하지 않는다(할인/변조 방어).
+        // 잠정 스키마라 금액 필드가 없으면(null) 검증만 건너뛰고 경고 — 스키마 확정 후 fail-closed로 강화 필요.
+        Long paidTotal = response.amount() != null ? response.amount().total() : null;
+        if (paidTotal == null) {
+            log.warn("PortOne 응답에 결제 금액이 없어 금액 검증을 건너뜀(스키마 확인 필요): expected={}", expectedAmountKrw);
+        } else if (paidTotal != expectedAmountKrw) {
+            log.error("PortOne 승인 금액 불일치: expected={}, actual={}", expectedAmountKrw, paidTotal);
+            return PortOnePaymentResult.failed("AMOUNT_MISMATCH: expected " + expectedAmountKrw + " got " + paidTotal);
         }
         return PortOnePaymentResult.success(parsePaidAt(response.paidAt()));
     }
@@ -106,7 +115,9 @@ public class PortOneClient {
 
     /** PortOne 결제 조회/응답 바디. 알 수 없는 필드는 무시(ignoreUnknown)해 스키마 변동에 방어적으로 대응. */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record PortOnePaymentApiResponse(String status, String paidAt, Failure failure) {
+    private record PortOnePaymentApiResponse(String status, String paidAt, Amount amount, Failure failure) {
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        private record Amount(Long total) {}
         @JsonIgnoreProperties(ignoreUnknown = true)
         private record Failure(String reason) {}
     }
