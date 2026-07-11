@@ -10,7 +10,7 @@ spring:
 
   h2:
     console:
-      enabled: true
+      enabled: ${H2_CONSOLE_ENABLED:true}  # 운영 배포 시 false로 (콘솔 노출·무인증 차단)
       path: /h2-console
 
   jpa:
