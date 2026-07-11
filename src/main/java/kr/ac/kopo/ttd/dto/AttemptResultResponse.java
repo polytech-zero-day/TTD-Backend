@@ -21,9 +21,10 @@ public record AttemptResultResponse(
         List<RubricCriterion> criteria,
         List<ChatMessageResponse> messages,
         long totalTokens, long tokenBudget,
+        boolean premium, String chatModel,
         String artifact) {
 
-    public static AttemptResultResponse of(Attempt a, List<AttemptMessage> messages, int attemptOrdinal) {
+    public static AttemptResultResponse of(Attempt a, List<AttemptMessage> messages, int attemptOrdinal, String chatModel) {
         Problem problem = a.getProblem();
         return new AttemptResultResponse(
                 a.getId(), a.getStatus().name(),
@@ -34,6 +35,7 @@ public record AttemptResultResponse(
                 a.getRubricDetail() == null ? List.of() : a.getRubricDetail(),
                 messages.stream().map(ChatMessageResponse::from).toList(),
                 a.getTotalTokens(), problem.getTokenBudget(),
+                a.isPremium(), chatModel,
                 a.getArtifact());
     }
 }

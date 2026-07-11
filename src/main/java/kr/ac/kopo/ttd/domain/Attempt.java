@@ -47,6 +47,21 @@ public class Attempt {
     @Column(name = "ends_at", nullable = false)
     private LocalDateTime endsAt;
 
+    /**
+     * 응시 시작 시점의 유료(PAID) 여부를 고정 저장한다. 응시 도중 구독 변동이 있어도
+     * 한 응시 내 모델·한도 정책이 일관되게 유지되도록(재조회 없이) 시작 시 스냅샷한다.
+     */
+    @Column(name = "premium", nullable = false)
+    @Builder.Default
+    private boolean premium = false;
+
+    /**
+     * 응시 생성 시 확정한 대화 모델. 이후 관리자 설정이나 구독 상태가 바뀌어도
+     * 진행 중 응시와 결과 리포트가 실제 사용 모델을 일관되게 가리키도록 보존한다.
+     */
+    @Column(name = "chat_model", length = 100)
+    private String chatModel;
+
     @Column(name = "message_count", nullable = false)
     @Builder.Default
     private int messageCount = 0;
@@ -103,6 +118,21 @@ public class Attempt {
         changeStatus(AttemptStatus.GRADING);
         this.artifact = artifact;
         this.submittedAt = now;
+    }
+
+    /** 대화·결과물 없이 시간이 만료된 세션은 AI 채점 비용 없이 종료한다. */
+    public void abandon() {
+        changeStatus(AttemptStatus.ABANDONED);
+    }
+
+    public boolean hasSubmissionContent() {
+        return messageCount > 0 || (draft != null && !draft.isBlank());
+    }
+
+    public boolean isResumable() {
+        return status == AttemptStatus.IN_PROGRESS
+                || status == AttemptStatus.GRADING
+                || status == AttemptStatus.GRADING_FAILED;
     }
 
     /** 채점 실패를 기록한다. 제출물·대화 이력은 보존되며 재채점으로 복구할 수 있다. */

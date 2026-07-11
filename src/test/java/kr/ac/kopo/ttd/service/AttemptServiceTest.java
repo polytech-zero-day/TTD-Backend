@@ -72,6 +72,12 @@ class AttemptServiceTest {
     @Mock
     private GradingProducer gradingProducer;
 
+    @Mock
+    private SubscriptionService subscriptionService;
+
+    @Mock
+    private AiModelSettingService aiModelSettingService;
+
     private AttemptService attemptService;
 
     @BeforeEach
@@ -79,7 +85,7 @@ class AttemptServiceTest {
         // @Value 프리미티브 파라미터 때문에 @InjectMocks 대신 직접 생성한다
         attemptService = new AttemptService(
                 attemptRepository, messageRepository, problemRepository,
-                aiClient, gradingProducer,
+                aiClient, gradingProducer, subscriptionService, aiModelSettingService,
                 MESSAGE_LIMIT, TIME_LIMIT_MINUTES);
     }
 
@@ -163,6 +169,59 @@ class AttemptServiceTest {
     }
 
     @Test
+    void 유료_구독자는_응시_횟수_제한을_받지_않는다() {
+        // 무료면 quota 소진으로 막히는 상황에서도, 유료 구독자는 새 응시가 생성된다
+        Problem problem = activeProblem();
+        given(problemRepository.findByIdAndStatus(1L, ProblemStatus.ACTIVE)).willReturn(Optional.of(problem));
+        given(attemptRepository.findFirstByUserIdAndProblemIdOrderByIdDesc(USER_ID, problem.getId()))
+                .willReturn(Optional.empty());
+        given(subscriptionService.hasActiveSubscription(USER_ID)).willReturn(true);
+        given(attemptRepository.save(any(Attempt.class))).willAnswer(invocation -> invocation.getArgument(0));
+        given(messageRepository.findByAttemptIdOrderByIdAsc(any())).willReturn(List.of());
+
+        AttemptSnapshotResponse response = attemptService.start(USER_ID, new AttemptStartRequest(1L));
+
+        assertThat(response.status()).isEqualTo("IN_PROGRESS");
+        assertThat(response.usage().unlimited()).isTrue();
+        verify(attemptRepository).save(any());
+        // quota 조회 자체를 하지 않는다(유료 단락)
+        verify(attemptRepository, never()).countByUserIdAndProblemId(any(), any());
+    }
+
+    @Test
+    void 응시를_시작할_때_선택된_모델을_스냅샷으로_반환한다() {
+        Problem problem = activeProblem();
+        given(problemRepository.findByIdAndStatus(1L, ProblemStatus.ACTIVE)).willReturn(Optional.of(problem));
+        given(attemptRepository.findFirstByUserIdAndProblemIdOrderByIdDesc(USER_ID, problem.getId()))
+                .willReturn(Optional.empty());
+        given(attemptRepository.countByUserIdAndProblemId(USER_ID, problem.getId())).willReturn(0L);
+        given(aiModelSettingService.chatModelFor(false, null)).willReturn("gpt-5.4-mini");
+        given(attemptRepository.save(any(Attempt.class))).willAnswer(invocation -> invocation.getArgument(0));
+        given(messageRepository.findByAttemptIdOrderByIdAsc(any())).willReturn(List.of());
+
+        AttemptSnapshotResponse response = attemptService.start(USER_ID, new AttemptStartRequest(1L));
+
+        assertThat(response.chatModel()).isEqualTo("gpt-5.4-mini");
+    }
+
+    @Test
+    void 유료_사용자는_응시_시작_전에_선택한_허용_모델로_응시한다() {
+        Problem problem = activeProblem();
+        given(problemRepository.findByIdAndStatus(1L, ProblemStatus.ACTIVE)).willReturn(Optional.of(problem));
+        given(attemptRepository.findFirstByUserIdAndProblemIdOrderByIdDesc(USER_ID, problem.getId()))
+                .willReturn(Optional.empty());
+        given(subscriptionService.hasActiveSubscription(USER_ID)).willReturn(true);
+        given(aiModelSettingService.chatModelFor(true, "gpt-5.4-mini")).willReturn("gpt-5.4-mini");
+        given(attemptRepository.save(any(Attempt.class))).willAnswer(invocation -> invocation.getArgument(0));
+        given(messageRepository.findByAttemptIdOrderByIdAsc(any())).willReturn(List.of());
+
+        AttemptSnapshotResponse response = attemptService.start(
+                USER_ID, new AttemptStartRequest(1L, "gpt-5.4-mini"));
+
+        assertThat(response.chatModel()).isEqualTo("gpt-5.4-mini");
+    }
+
+    @Test
     void 비활성_문제는_응시를_시작할_수_없다() {
         given(problemRepository.findByIdAndStatus(99L, ProblemStatus.ACTIVE)).willReturn(Optional.empty());
 
@@ -194,7 +253,7 @@ class AttemptServiceTest {
         Attempt attempt = inProgressAttempt(activeProblem());
         given(attemptRepository.findById(1L)).willReturn(Optional.of(attempt));
         given(messageRepository.findByAttemptIdOrderByIdAsc(1L)).willReturn(List.of());
-        given(aiClient.chat(anyString(), anyList(), any())).willReturn(new AiChatResult("AI 답변", 500L));
+        given(aiClient.chat(anyString(), anyList(), any(), any())).willReturn(new AiChatResult("AI 답변", 500L));
         given(messageRepository.save(any(AttemptMessage.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         AttemptMessageResponse response = attemptService.sendMessage(USER_ID, 1L, new AttemptMessageRequest("질문"));
@@ -217,6 +276,26 @@ class AttemptServiceTest {
                 .isInstanceOf(AttemptMessageLimitExceededException.class);
 
         verify(aiClient, never()).chat(anyString(), anyList(), any());
+    }
+
+    @Test
+    void 유료_구독자는_프롬프트_횟수_제한을_넘어도_전송할_수_있다() {
+        // 프롬프트 한도를 이미 채운 유료 응시 — 무료라면 막히지만 유료는 계속 대화 가능(무제한)
+        Attempt attempt = Attempt.builder()
+                .userId(USER_ID).problem(activeProblem())
+                .endsAt(LocalDateTime.now().plusMinutes(TIME_LIMIT_MINUTES))
+                .premium(true).messageCount(MESSAGE_LIMIT)
+                .build();
+        given(attemptRepository.findById(1L)).willReturn(Optional.of(attempt));
+        given(messageRepository.findByAttemptIdOrderByIdAsc(1L)).willReturn(List.of());
+        given(aiClient.chat(anyString(), anyList(), any(), any())).willReturn(new AiChatResult("AI 답변", 700L));
+        given(messageRepository.save(any(AttemptMessage.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        AttemptMessageResponse response = attemptService.sendMessage(USER_ID, 1L, new AttemptMessageRequest("질문"));
+
+        assertThat(response.message().content()).isEqualTo("AI 답변");
+        assertThat(response.usage().unlimited()).isTrue();
+        assertThat(response.usage().messagesUsed()).isEqualTo(MESSAGE_LIMIT + 1);
     }
 
     @Test
@@ -338,18 +417,20 @@ class AttemptServiceTest {
     }
 
     @Test
-    void 시작_시_진행중_세션이_만료됐으면_자동제출되어_GRADING_스냅샷을_반환한다() {
-        // 프론트가 타이머 만료 시 start를 재호출해 서버 만료 처리를 유도하는 경로
+    void 시작_시_빈_진행중_세션이_만료됐으면_채점_없이_종료하고_새_응시를_만든다() {
+        // 무료의 응시 횟수는 시작 시 이미 차감됐지만, 빈 세션에는 AI 채점 비용을 쓰지 않는다.
         Problem problem = activeProblem();
         Attempt expired = expiredAttempt(problem);
         given(problemRepository.findByIdAndStatus(1L, ProblemStatus.ACTIVE)).willReturn(Optional.of(problem));
         given(attemptRepository.findFirstByUserIdAndProblemIdOrderByIdDesc(USER_ID, problem.getId())).willReturn(Optional.of(expired));
+        given(attemptRepository.save(any(Attempt.class))).willAnswer(invocation -> invocation.getArgument(0));
         given(messageRepository.findByAttemptIdOrderByIdAsc(any())).willReturn(List.of());
 
         AttemptSnapshotResponse response = attemptService.start(USER_ID, new AttemptStartRequest(1L));
 
-        assertThat(response.status()).isEqualTo("GRADING");
-        verify(gradingProducer).requestGrading(any());
+        assertThat(expired.getStatus()).isEqualTo(AttemptStatus.ABANDONED);
+        assertThat(response.status()).isEqualTo("IN_PROGRESS");
+        verify(gradingProducer, never()).requestGrading(any());
     }
 
     @Test
@@ -366,11 +447,24 @@ class AttemptServiceTest {
 
     @Test
     void 진행_중_세션이_없으면_복원_조회시_예외() {
-        given(attemptRepository.findFirstByUserIdAndProblemIdAndStatusOrderByIdDesc(USER_ID, 1L, AttemptStatus.IN_PROGRESS))
+        given(attemptRepository.findFirstByUserIdAndProblemIdOrderByIdDesc(USER_ID, 1L))
                 .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> attemptService.getCurrent(USER_ID, 1L))
                 .isInstanceOf(AttemptNotFoundException.class);
+    }
+
+    @Test
+    void 채점_중_세션도_복원_조회로_반환한다() {
+        Attempt attempt = inProgressAttempt(activeProblem());
+        attempt.submit("제출물", LocalDateTime.now());
+        given(attemptRepository.findFirstByUserIdAndProblemIdOrderByIdDesc(USER_ID, 1L))
+                .willReturn(Optional.of(attempt));
+        given(messageRepository.findByAttemptIdOrderByIdAsc(any())).willReturn(List.of());
+
+        AttemptSnapshotResponse response = attemptService.getCurrent(USER_ID, 1L);
+
+        assertThat(response.status()).isEqualTo("GRADING");
     }
 
     // ── 재채점 ────────────────────────────────────────────

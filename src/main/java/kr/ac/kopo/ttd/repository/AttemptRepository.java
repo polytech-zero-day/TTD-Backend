@@ -39,7 +39,7 @@ public interface AttemptRepository extends JpaRepository<Attempt, Long> {
 
     @Query("""
             select new kr.ac.kopo.ttd.dto.MyAttemptStatsResponse(
-                count(a),
+                coalesce(sum(case when a.status = :graded then 1 else 0 end), 0),
                 avg(case when a.status = :graded then a.rubricScore end),
                 avg(case when a.status = :graded then a.efficiencyScore end),
                 max(case when a.status = :graded then a.finalScore * 1.0 end),
