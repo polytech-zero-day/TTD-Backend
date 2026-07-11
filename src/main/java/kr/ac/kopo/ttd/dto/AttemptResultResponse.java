@@ -20,7 +20,8 @@ public record AttemptResultResponse(
         Integer rubricScore, Integer efficiencyScore, Integer finalScore, String feedback,
         List<RubricCriterion> criteria,
         List<ChatMessageResponse> messages,
-        long totalTokens, long tokenBudget) {
+        long totalTokens, long tokenBudget,
+        String artifact) {
 
     public static AttemptResultResponse of(Attempt a, List<AttemptMessage> messages, int attemptOrdinal) {
         Problem problem = a.getProblem();
@@ -32,6 +33,7 @@ public record AttemptResultResponse(
                 a.getRubricScore(), a.getEfficiencyScore(), a.getFinalScore(), a.getFeedback(),
                 a.getRubricDetail() == null ? List.of() : a.getRubricDetail(),
                 messages.stream().map(ChatMessageResponse::from).toList(),
-                a.getTotalTokens(), problem.getTokenBudget());
+                a.getTotalTokens(), problem.getTokenBudget(),
+                a.getArtifact());
     }
 }
