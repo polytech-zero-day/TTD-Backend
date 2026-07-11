@@ -24,14 +24,17 @@ public class AiModelSettingService {
 
     private final AiModelSettingRepository repository;
     private final String defaultModel;
+    private final String premiumChatModel;
     private final List<String> availableModels;
 
     public AiModelSettingService(
             AiModelSettingRepository repository,
             @Value("${spring.ai.openai.chat.options.model}") String defaultModel,
+            @Value("${app.ai.premium-chat-model}") String premiumChatModel,
             @Value("${app.ai.available-models}") String availableModelsCsv) {
         this.repository = repository;
         this.defaultModel = defaultModel;
+        this.premiumChatModel = premiumChatModel;
         this.availableModels = Arrays.stream(availableModelsCsv.split(","))
                 .map(String::trim).filter(s -> !s.isBlank()).toList();
     }
@@ -41,6 +44,28 @@ public class AiModelSettingService {
         return repository.findByPurpose(purpose)
                 .map(AiModelSetting::getModel)
                 .orElse(defaultModel);
+    }
+
+    /**
+     * 응시(CHAT) 시 사용할 모델을 플랜에 따라 반환한다 — 유료는 상위 모델(premium-chat-model),
+     * 무료는 CHAT 용도의 현재 설정 모델. "상위 모델로 응시" 혜택의 단일 판정점.
+     */
+    public String chatModelFor(boolean premium) {
+        return premium ? premiumChatModel : modelFor(AiPurpose.CHAT);
+    }
+
+    /**
+     * 유료 사용자는 응시 시작 전에 기본·상위 모델 중 하나를 선택할 수 있다.
+     * 무료 사용자는 요청값과 관계없이 관리자 설정의 기본 CHAT 모델을 사용한다.
+     */
+    public String chatModelFor(boolean premium, String selectedModel) {
+        if (!premium || selectedModel == null || selectedModel.isBlank()) {
+            return chatModelFor(premium);
+        }
+        if (!List.of(defaultModel, premiumChatModel).contains(selectedModel)) {
+            throw new BusinessException(ErrorCode.INVALID_AI_MODEL);
+        }
+        return selectedModel;
     }
 
     /** 관리 화면용 — 전체 용도의 현재 설정과 선택 가능한 모델 목록. */

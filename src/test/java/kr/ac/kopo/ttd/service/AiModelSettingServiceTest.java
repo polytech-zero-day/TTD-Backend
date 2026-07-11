@@ -25,13 +25,14 @@ import static org.mockito.Mockito.verify;
 class AiModelSettingServiceTest {
 
     private static final String DEFAULT = "gpt-5.4-mini";
+    private static final String PREMIUM = "gpt-5.4";
     private static final String AVAILABLE = "gpt-5.4-mini, gpt-5.4, gpt-5.4-nano";
 
     @Mock
     private AiModelSettingRepository repository;
 
     private AiModelSettingService service() {
-        return new AiModelSettingService(repository, DEFAULT, AVAILABLE);
+        return new AiModelSettingService(repository, DEFAULT, PREMIUM, AVAILABLE);
     }
 
     @Test
@@ -93,5 +94,17 @@ class AiModelSettingServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_AI_MODEL);
+    }
+
+    @Test
+    void 유료_응시는_프리미엄_모델을_쓴다() {
+        assertThat(service().chatModelFor(true)).isEqualTo(PREMIUM);
+    }
+
+    @Test
+    void 무료_응시는_CHAT_용도_설정_모델을_쓴다() {
+        given(repository.findByPurpose(AiPurpose.CHAT)).willReturn(Optional.empty());
+
+        assertThat(service().chatModelFor(false)).isEqualTo(DEFAULT);
     }
 }

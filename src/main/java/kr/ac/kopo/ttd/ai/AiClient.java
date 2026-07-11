@@ -54,7 +54,15 @@ public class AiClient {
 
     /** 대화 이력 전체를 넘겨 다음 응답을 받는다. history 는 오래된 순. */
     public AiChatResult chat(String systemPrompt, List<Message> history, AiPurpose purpose) {
-        return call(systemPrompt, history, false, purpose);
+        return call(systemPrompt, history, false, purpose, null);
+    }
+
+    /**
+     * 용도 기본 모델 대신 명시한 모델로 호출한다(유료 응시의 상위 모델 등, 플랜별 모델 주입용).
+     * 모델 결정 로직(구독 조회 등)은 호출 측 책임으로 두고, 여기선 넘겨받은 모델만 쓴다.
+     */
+    public AiChatResult chat(String systemPrompt, List<Message> history, AiPurpose purpose, String model) {
+        return call(systemPrompt, history, false, purpose, model);
     }
 
     /**
@@ -63,11 +71,12 @@ public class AiClient {
      * 문제를 모델 강제 레벨에서 차단한다. (프롬프트에 "JSON" 언급이 있어야 동작)
      */
     public AiChatResult chatJson(String systemPrompt, List<Message> history, AiPurpose purpose) {
-        return call(systemPrompt, history, true, purpose);
+        return call(systemPrompt, history, true, purpose, null);
     }
 
-    private AiChatResult call(String systemPrompt, List<Message> history, boolean jsonMode, AiPurpose purpose) {
-        String model = modelSettingService.modelFor(purpose);
+    private AiChatResult call(String systemPrompt, List<Message> history, boolean jsonMode,
+                              AiPurpose purpose, String modelOverride) {
+        String model = modelOverride != null ? modelOverride : modelSettingService.modelFor(purpose);
         // 모델이 캐시 키에 포함되어야 함 — 미포함 시 모델을 바꿔도 이전 모델의 캐시 응답이 반환된다
         String cacheKey = cacheKey(systemPrompt, history, jsonMode, model);
         AiChatResult cached = readCache(cacheKey);

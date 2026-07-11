@@ -32,6 +32,8 @@ public class AttemptService {
     private final ProblemRepository problemRepository;
     private final AiClient aiClient;
     private final GradingProducer gradingProducer;
+    private final SubscriptionService subscriptionService;
+    private final AiModelSettingService aiModelSettingService;
     private final int messageLimit;
     private final long timeLimitMinutes;
 
@@ -41,6 +43,8 @@ public class AttemptService {
             ProblemRepository problemRepository,
             AiClient aiClient,
             GradingProducer gradingProducer,
+            SubscriptionService subscriptionService,
+            AiModelSettingService aiModelSettingService,
             @Value("${app.attempt.message-limit}") int messageLimit,
             @Value("${app.attempt.time-limit-minutes}") long timeLimitMinutes) {
         this.attemptRepository = attemptRepository;
@@ -48,6 +52,8 @@ public class AttemptService {
         this.problemRepository = problemRepository;
         this.aiClient = aiClient;
         this.gradingProducer = gradingProducer;
+        this.subscriptionService = subscriptionService;
+        this.aiModelSettingService = aiModelSettingService;
         this.messageLimit = messageLimit;
         this.timeLimitMinutes = timeLimitMinutes;
     }
@@ -65,21 +71,28 @@ public class AttemptService {
         Attempt latest = attemptRepository
                 .findFirstByUserIdAndProblemIdOrderByIdDesc(userId, problem.getId())
                 .orElse(null);
-        if (latest != null && latest.getStatus() != AttemptStatus.GRADED) {
+        if (latest != null && latest.isResumable()) {
             // 프론트는 타이머 만료 시에도 이 API를 재호출한다. IN_PROGRESS면 여기서 자동 제출되어
             // 스냅샷 status가 GRADING으로 내려가고, GRADING/GRADING_FAILED면 해당 상태 그대로 복원된다.
             expireIfNeeded(latest);
-            return toSnapshot(latest);
+            if (latest.isResumable()) {
+                return toSnapshot(latest);
+            }
         }
 
-        if (attemptRepository.countByUserIdAndProblemId(userId, problem.getId())
+        // 유료 혜택: 유료 구독자는 문제별 응시 횟수 제한을 받지 않는다(무제한 재응시).
+        boolean premium = subscriptionService.hasActiveSubscription(userId);
+        if (!premium && attemptRepository.countByUserIdAndProblemId(userId, problem.getId())
                 >= problem.getMaxAttempts()) {
             throw new AttemptQuotaExceededException();
         }
+        String chatModel = aiModelSettingService.chatModelFor(premium, request.chatModel());
         Attempt attempt = attemptRepository.save(Attempt.builder()
                 .userId(userId)
                 .problem(problem)
                 .endsAt(LocalDateTime.now().plusMinutes(timeLimitMinutes))
+                .premium(premium)
+                .chatModel(chatModel)
                 .build());
         return toSnapshot(attempt);
     }
@@ -88,9 +101,13 @@ public class AttemptService {
     @Transactional
     public AttemptSnapshotResponse getCurrent(Long userId, Long problemId) {
         Attempt attempt = attemptRepository
-                .findFirstByUserIdAndProblemIdAndStatusOrderByIdDesc(userId, problemId, AttemptStatus.IN_PROGRESS)
+                .findFirstByUserIdAndProblemIdOrderByIdDesc(userId, problemId)
+                .filter(Attempt::isResumable)
                 .orElseThrow(AttemptNotFoundException::new);
         expireIfNeeded(attempt);
+        if (!attempt.isResumable()) {
+            throw new AttemptNotFoundException();
+        }
         return toSnapshot(attempt);
     }
 
@@ -101,7 +118,8 @@ public class AttemptService {
         Attempt attempt = findOwnedAttempt(userId, attemptId);
         expireIfNeeded(attempt);
         requireInProgress(attempt);
-        if (attempt.getMessageCount() >= messageLimit) {
+        // 유료 혜택: 유료 구독자는 응시 내 프롬프트 횟수 제한을 받지 않는다(무제한 대화).
+        if (!attempt.isPremium() && attempt.getMessageCount() >= messageLimit) {
             throw new AttemptMessageLimitExceededException();
         }
 
@@ -112,7 +130,9 @@ public class AttemptService {
                         : AiClient.assistant(m.getContent())).toList());
         aiHistory.add(AiClient.user(request.content()));
 
-        AiChatResult result = aiClient.chat(CHAT_SYSTEM_PROMPT, aiHistory, AiPurpose.CHAT);
+        // 응시 시작 시 고정한 모델을 사용한다. 기존 데이터(chatModel=null)는 현재 정책으로 폴백한다.
+        AiChatResult result = aiClient.chat(CHAT_SYSTEM_PROMPT, aiHistory, AiPurpose.CHAT,
+                chatModelOf(attempt));
 
         messageRepository.save(AttemptMessage.builder()
                 .attempt(attempt).role(MessageRole.USER).content(request.content()).build());
@@ -123,7 +143,7 @@ public class AttemptService {
 
         return new AttemptMessageResponse(
                 ChatMessageResponse.from(assistantMessage),
-                AttemptUsageResponse.of(attempt, messageLimit, attempt.getProblem().getTokenBudget()));
+                usageOf(attempt));
     }
 
     @Transactional(noRollbackFor = AttemptNotInProgressException.class)
@@ -181,14 +201,24 @@ public class AttemptService {
         List<AttemptMessage> messages = messageRepository.findByAttemptIdOrderByIdAsc(attempt.getId());
         int ordinal = attemptRepository.countByUserIdAndProblemIdAndIdLessThanEqual(
                 attempt.getUserId(), attempt.getProblem().getId(), attempt.getId());
-        return AttemptResultResponse.of(attempt, messages, ordinal);
+        return AttemptResultResponse.of(attempt, messages, ordinal, chatModelOf(attempt));
     }
 
-    /** 만료된 진행 중 세션은 마지막 draft로 자동 제출한다 (업계 표준 정책). */
+    /** 사용량 응답 — 유료(premium)면 프롬프트 무제한(unlimited=true)으로 표시한다. */
+    private AttemptUsageResponse usageOf(Attempt attempt) {
+        return AttemptUsageResponse.of(
+                attempt, messageLimit, attempt.getProblem().getTokenBudget(), attempt.isPremium());
+    }
+
+    /** 만료된 세션은 결과물·대화가 있으면 자동 제출하고, 완전히 비어 있으면 채점 없이 종료한다. */
     private void expireIfNeeded(Attempt attempt) {
         if (attempt.isExpired(LocalDateTime.now())) {
-            attempt.submit(attempt.getDraft(), LocalDateTime.now());
-            gradingProducer.requestGrading(attempt.getId());
+            if (attempt.hasSubmissionContent()) {
+                attempt.submit(attempt.getDraft(), LocalDateTime.now());
+                gradingProducer.requestGrading(attempt.getId());
+            } else {
+                attempt.abandon();
+            }
         }
     }
 
@@ -215,7 +245,15 @@ public class AttemptService {
                 .map(ChatMessageResponse::from).toList();
         return new AttemptSnapshotResponse(
                 attempt.getId(), attempt.getStatus().name(), remaining,
-                AttemptUsageResponse.of(attempt, messageLimit, attempt.getProblem().getTokenBudget()),
-                messages, attempt.getDraft());
+                usageOf(attempt),
+                messages, attempt.getDraft(),
+                chatModelOf(attempt));
+    }
+
+    /** 기존 응시 레코드는 마이그레이션 전 chatModel이 없을 수 있어 현재 정책으로만 호환한다. */
+    private String chatModelOf(Attempt attempt) {
+        return attempt.getChatModel() != null
+                ? attempt.getChatModel()
+                : aiModelSettingService.chatModelFor(attempt.isPremium());
     }
 }
