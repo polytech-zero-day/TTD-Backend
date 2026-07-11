@@ -131,11 +131,29 @@ class SubscriptionServiceTest {
     // ── 취소 ──────────────────────────────────────────────
 
     @Test
-    void 구독을_취소하면_PortOne_빌링키도_폐기한다() {
+    void 구독을_취소하면_결제_주기_종료로_예약하고_혜택은_유지한다() {
         Subscription subscription = activeSubscription();
         given(subscriptionRepository.findByUserIdAndStatusIn(eq(USER_ID), any())).willReturn(Optional.of(subscription));
 
-        subscriptionService.cancel(USER_ID);
+        SubscriptionResponse response = subscriptionService.cancel(USER_ID);
+
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        assertThat(response.cancelAtPeriodEnd()).isTrue();
+        verify(portOneClient, never()).deleteBillingKey(anyString());
+    }
+
+    @Test
+    void 예약_취소는_다음_결제일에_종료되고_빌링키를_폐기한다() {
+        Subscription subscription = Subscription.builder()
+                .userId(USER_ID).billingKey("billing-key-1")
+                .currentPeriodStart(LocalDateTime.now().minusMonths(1))
+                .nextBillingAt(LocalDateTime.now().minusMinutes(1))
+                .build();
+        subscription.scheduleCancellation();
+        given(subscriptionRepository.findByCancelAtPeriodEndTrueAndNextBillingAtLessThanEqual(any()))
+                .willReturn(java.util.List.of(subscription));
+
+        subscriptionService.expireDueCancellations(LocalDateTime.now());
 
         assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELED);
         verify(portOneClient).deleteBillingKey("billing-key-1");
@@ -180,5 +198,22 @@ class SubscriptionServiceTest {
         assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.PAST_DUE);
         subscriptionService.chargeSingleSubscription(1L);
         assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.EXPIRED);
+    }
+
+    // ── 유료 혜택 게이팅 ────────────────────────────────────
+
+    @Test
+    void 소유_구독이_있으면_유료로_판정한다() {
+        given(subscriptionRepository.findByUserIdAndStatusIn(eq(USER_ID), any()))
+                .willReturn(Optional.of(activeSubscription()));
+
+        assertThat(subscriptionService.hasActiveSubscription(USER_ID)).isTrue();
+    }
+
+    @Test
+    void 소유_구독이_없으면_무료로_판정한다() {
+        given(subscriptionRepository.findByUserIdAndStatusIn(eq(USER_ID), any())).willReturn(Optional.empty());
+
+        assertThat(subscriptionService.hasActiveSubscription(USER_ID)).isFalse();
     }
 }

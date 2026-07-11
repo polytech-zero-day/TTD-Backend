@@ -29,18 +29,21 @@ public class PortOneClient {
     private final RestClient restClient;
     private final String storeId;
     private final String channelKey;
+    private final boolean mockEnabled;
 
     public PortOneClient(
             RestClient.Builder restClientBuilder,
             @Value("${app.portone.api-secret}") String apiSecret,
             @Value("${app.portone.store-id}") String storeId,
-            @Value("${app.portone.channel-key}") String channelKey) {
+            @Value("${app.portone.channel-key}") String channelKey,
+            @Value("${app.payment.mock-enabled}") boolean mockEnabled) {
         this.restClient = restClientBuilder
                 .baseUrl(BASE_URL)
                 .defaultHeader("Authorization", "PortOne " + apiSecret)
                 .build();
         this.storeId = storeId;
         this.channelKey = channelKey;
+        this.mockEnabled = mockEnabled;
     }
 
     /**
@@ -50,6 +53,12 @@ public class PortOneClient {
      * 없다(잔여 리스크. 의심되면 PortOne 관리자 콘솔에서 paymentId로 직접 대조 필요).
      */
     public PortOnePaymentResult payWithBillingKey(String paymentId, String billingKey, long amountKrw, String orderName) {
+        if (mockEnabled && isDemoBillingKey(billingKey)) {
+            // 데모 빌링키(프론트 F117 미가맹점 우회 등)만 PG 실호출 없이 성공 처리한다(설계서 S-13).
+            // 실제 발급된 빌링키는 mockEnabled여도 실제 PortOne 결제로 진행 — 데모 승인 대상은 데모 키뿐.
+            log.info("[데모 결제] 데모 빌링키 승인(PG 미호출): paymentId={}, amount={}", paymentId, amountKrw);
+            return PortOnePaymentResult.success(LocalDateTime.now());
+        }
         try {
             PortOnePaymentApiResponse response = restClient.post()
                     .uri("/payments/{paymentId}/billing-key", paymentId)
@@ -68,11 +77,23 @@ public class PortOneClient {
 
     /** 구독 취소 시 PortOne 측 빌링키도 폐기한다. best-effort — 실패해도 로컬 구독 취소는 막지 않는다. */
     public void deleteBillingKey(String billingKey) {
+        if (mockEnabled && isDemoBillingKey(billingKey)) {
+            return; // 데모 빌링키는 실제로 발급된 적이 없으므로 폐기도 건너뛴다.
+        }
         try {
             restClient.delete().uri("/billing-keys/{billingKey}", billingKey).retrieve().toBodilessEntity();
         } catch (RestClientException e) {
             log.warn("PortOne 빌링키 삭제 실패(구독 취소 자체는 계속 진행): billingKey 삭제만 실패, 로컬 구독은 정상 취소됨", e);
         }
+    }
+
+    /**
+     * 프론트 데모 결제가 발급한 가짜 빌링키인지 판별한다(F117 우회 {@code demo-*}, mock 폴백 {@code mock-*}).
+     * mockEnabled일 때만 이 키들을 내부 승인 대상으로 삼아, 실제 발급 빌링키는 그대로 PG로 보낸다.
+     */
+    private static boolean isDemoBillingKey(String billingKey) {
+        return billingKey != null
+                && (billingKey.startsWith("demo-") || billingKey.startsWith("mock-"));
     }
 
     private PortOnePaymentResult toResult(PortOnePaymentApiResponse response, long expectedAmountKrw) {

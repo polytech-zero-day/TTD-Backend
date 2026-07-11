@@ -10,5 +10,8 @@ import java.util.Optional;
 
 public interface SubscriptionRepository extends JpaRepository<Subscription, Long> {
     Optional<Subscription> findByUserIdAndStatusIn(Long userId, List<SubscriptionStatus> statuses);
-    List<Subscription> findByStatusInAndNextBillingAtLessThanEqual(List<SubscriptionStatus> statuses, LocalDateTime now);
+    Optional<Subscription> findFirstByUserIdOrderByIdDesc(Long userId);
+    List<Subscription> findByStatusInAndCancelAtPeriodEndFalseAndNextBillingAtLessThanEqual(
+            List<SubscriptionStatus> statuses, LocalDateTime now);
+    List<Subscription> findByCancelAtPeriodEndTrueAndNextBillingAtLessThanEqual(LocalDateTime now);
 }

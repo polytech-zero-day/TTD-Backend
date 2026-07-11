@@ -82,6 +82,8 @@ app:
     cache-ttl-hours: 24
     # 관리자 모델 설정에서 선택 가능한 모델 목록 (PUT 검증 + 프론트 셀렉트 원천)
     available-models: ${AI_AVAILABLE_MODELS:gpt-5.4-mini,gpt-5.4,gpt-5.4-nano}
+    # 유료(PAID) 구독자가 응시(CHAT) 시 사용하는 상위 모델. FREE는 CHAT 용도 설정값(기본 gpt-5.4-mini)을 쓴다.
+    premium-chat-model: ${AI_PREMIUM_CHAT_MODEL:gpt-5.4}
   portone:
     store-id: ${PORTONE_STORE_ID}
     api-secret: ${PORTONE_API_SECRET}
@@ -90,3 +92,7 @@ app:
   payment:
     monthly-price-krw: 9900
     order-name: TTD 월간 구독
+    # 데모 결제 승인 모드(설계서 S-13). true면 프론트가 보낸 데모 빌링키(demo-*/mock-*)만
+    # PG 실호출 없이 성공 처리한다(F117 미가맹점 우회). 실제 발급된 빌링키는 그대로 PortOne로 간다.
+    # 운영 전환(실가맹점) 시 false로 두면 모든 결제가 실제 PG를 탄다.
+    mock-enabled: ${PAYMENT_MOCK_ENABLED:true}

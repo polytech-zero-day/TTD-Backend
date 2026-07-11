@@ -19,7 +19,7 @@ class PortOneClientTest {
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         server.expect(method(POST)).andRespond(withSuccess(json, MediaType.APPLICATION_JSON));
         holder[0] = server;
-        return new PortOneClient(builder, "secret", "store-1", "channel-1");
+        return new PortOneClient(builder, "secret", "store-1", "channel-1", false);
     }
 
     @Test
@@ -56,5 +56,36 @@ class PortOneClientTest {
         PortOnePaymentResult result = client.payWithBillingKey("pay-1", "bk", PRICE, "주문");
 
         assertThat(result.success()).isTrue();
+    }
+
+    @Test
+    void mock_모드는_데모_빌링키만_PG_실호출_없이_성공_처리한다() {
+        // mockEnabled=true + 데모 빌링키(demo-*)면 RestClient를 건드리지 않아야 한다(설계서 S-13).
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        // 어떤 요청도 기대하지 않음 — 호출되면 verify에서 실패한다.
+        PortOneClient client = new PortOneClient(builder, "secret", "store-1", "channel-1", true);
+
+        PortOnePaymentResult result =
+                client.payWithBillingKey("pay-1", "demo-f117-billing-abc", PRICE, "주문");
+
+        assertThat(result.success()).isTrue();
+        server.verify(); // 실호출이 없었음을 확인
+    }
+
+    @Test
+    void mock_모드여도_실제_빌링키는_PG로_결제를_보낸다() {
+        // 데모 키가 아니면 mockEnabled여도 실제 PortOne 결제 경로를 탄다(내부 승인 대상은 데모 키뿐).
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(method(POST)).andRespond(withSuccess(
+                "{\"status\":\"PAID\",\"amount\":{\"total\":9900}}", MediaType.APPLICATION_JSON));
+        PortOneClient client = new PortOneClient(builder, "secret", "store-1", "channel-1", true);
+
+        PortOnePaymentResult result =
+                client.payWithBillingKey("pay-1", "real-billing-key", PRICE, "주문");
+
+        assertThat(result.success()).isTrue();
+        server.verify(); // 실제로 PG 호출이 일어났음을 확인
     }
 }

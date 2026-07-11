@@ -32,9 +32,8 @@ public class SubscriptionController {
     }
 
     @DeleteMapping
-    public ResponseEntity<Void> cancel(@AuthenticationPrincipal Long userId) {
-        subscriptionService.cancel(userId);
-        return ResponseEntity.noContent().build();
+    public ApiResponse<SubscriptionResponse> cancel(@AuthenticationPrincipal Long userId) {
+        return ApiResponse.success(subscriptionService.cancel(userId));
     }
 
     @GetMapping("/me")

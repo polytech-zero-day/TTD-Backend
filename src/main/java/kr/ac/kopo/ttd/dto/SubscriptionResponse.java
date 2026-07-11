@@ -9,13 +9,17 @@ public record SubscriptionResponse(
         SubscriptionStatus status,
         LocalDateTime currentPeriodStart,
         LocalDateTime nextBillingAt,
-        LocalDateTime canceledAt) {
+        LocalDateTime canceledAt,
+        boolean cancelAtPeriodEnd,
+        LocalDateTime cancelRequestedAt) {
 
     public static SubscriptionResponse from(Subscription subscription) {
         return new SubscriptionResponse(
                 subscription.getStatus(),
                 subscription.getCurrentPeriodStart(),
                 subscription.getNextBillingAt(),
-                subscription.getCanceledAt());
+                subscription.getCanceledAt(),
+                subscription.isCancelAtPeriodEnd(),
+                subscription.getCancelRequestedAt());
     }
 }
