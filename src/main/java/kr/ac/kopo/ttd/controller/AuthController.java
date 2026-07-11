@@ -39,6 +39,10 @@ public class AuthController {
     @Value("${app.auth.refresh-cookie-secure}")
     private boolean refreshCookieSecure;
 
+    // 운영에서 프론트·백엔드 도메인이 다르면 None(+Secure)로 지정해야 fetch에 쿠키가 실린다. 기본 Lax.
+    @Value("${app.auth.refresh-cookie-same-site}")
+    private String refreshCookieSameSite;
+
     @Value("${app.jwt.refresh-token-ttl-days}")
     private long refreshTokenTtlDays;
 
@@ -83,7 +87,7 @@ public class AuthController {
         return ResponseCookie.from(REFRESH_COOKIE, token)
                 .httpOnly(true)
                 .secure(refreshCookieSecure)
-                .sameSite("Lax")
+                .sameSite(refreshCookieSameSite)
                 .path("/api/auth")
                 .maxAge(maxAge)
                 .build();
