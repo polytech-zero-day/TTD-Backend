@@ -23,10 +23,13 @@ app:
   admin-init:
     password: ${ADMIN_INIT_PASSWORD:admin1234!}
   portone:
-    # 애플리케이션 기동용 더미값. 결제 모의 승인은 기본적으로 비활성화되어 있다.
+    # 애플리케이션 기동용 더미값(로컬은 아래 mock 결제로 승인하므로 실 PG 호출 없음).
     store-id: ${PORTONE_STORE_ID:local-store-id}
     api-secret: ${PORTONE_API_SECRET:local-api-secret}
     channel-key: ${PORTONE_CHANNEL_KEY:local-channel-key}
+  payment:
+    # 로컬/데모는 Mock 결제 승인(설계서 S-13, F117 미가맹 우회). 운영 프로필은 기본값 false.
+    mock-enabled: ${PAYMENT_MOCK_ENABLED:true}
   auth:
     # localhost HTTP 개발 환경에서는 Secure 쿠키를 브라우저가 전송하지 않는다.
     refresh-cookie-secure: false
