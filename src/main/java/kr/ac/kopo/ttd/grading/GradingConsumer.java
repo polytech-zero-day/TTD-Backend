@@ -2,6 +2,7 @@ package kr.ac.kopo.ttd.grading;
 
 import com.rabbitmq.client.Channel;
 import kr.ac.kopo.ttd.domain.Attempt;
+import kr.ac.kopo.ttd.common.constant.ScoreWeights;
 import kr.ac.kopo.ttd.domain.AttemptStatus;
 import kr.ac.kopo.ttd.repository.AttemptMessageRepository;
 import kr.ac.kopo.ttd.repository.AttemptRepository;
@@ -28,10 +29,6 @@ import java.io.IOException;
 public class GradingConsumer {
 
     private static final int RETRY_LIMIT = 2;
-
-    // TODO: 종합 점수 가중치 — 산식 회의 확정 시 조정 (현재 품질 60% + 효율 40%)
-    private static final double RUBRIC_WEIGHT = 0.6;
-    private static final double EFFICIENCY_WEIGHT = 0.4;
 
     private final AttemptRepository attemptRepository;
     private final AttemptMessageRepository messageRepository;
@@ -81,7 +78,7 @@ public class GradingConsumer {
             int efficiency = efficiencyScorer.score(
                     attempt.getTotalTokens(), attempt.getProblem().getTokenBudget());
             int finalScore = (int) Math.round(
-                    rubric.score() * RUBRIC_WEIGHT + efficiency * EFFICIENCY_WEIGHT);
+                    rubric.score() * ScoreWeights.RUBRIC + efficiency * ScoreWeights.EFFICIENCY);
 
             attempt.grade(rubric.score(), efficiency, finalScore, rubric.feedback(), rubric.criteria());
             log.info("채점 완료: attemptId={}, rubric={}, efficiency={}, final={}",
