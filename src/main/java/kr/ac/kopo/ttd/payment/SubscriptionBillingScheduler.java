@@ -21,6 +21,12 @@ public class SubscriptionBillingScheduler {
 
     private final SubscriptionService subscriptionService;
 
+    /** 예약 취소는 결제 시각 직후 종료해야 하므로 재결제 배치와 분리해 매분 확인한다. */
+    @Scheduled(cron = "${app.portone.cancellation-cron:0 * * * * *}")
+    public void expireScheduledCancellations() {
+        subscriptionService.expireDueCancellations(LocalDateTime.now());
+    }
+
     @Scheduled(cron = "${app.portone.billing-cron}")
     public void chargeDueSubscriptions() {
         List<Long> dueSubscriptionIds = subscriptionService.findDueSubscriptionIds(LocalDateTime.now());

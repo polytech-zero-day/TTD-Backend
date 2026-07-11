@@ -86,22 +86,48 @@ public class SubscriptionService {
         return SubscriptionResponse.from(subscription);
     }
 
-    /** 구독 취소. PortOne 빌링키 폐기는 best-effort(실패해도 로컬 취소는 유지). */
+    /**
+     * 구독 취소 예약. 결제 주기가 끝날 때까지 혜택은 유지하고, 다음 청구만 막는다.
+     * 빌링키는 실제 종료 시점에 폐기해 남은 기간 동안의 사용은 보장한다.
+     */
     @Transactional
-    public void cancel(Long userId) {
+    public SubscriptionResponse cancel(Long userId) {
         Subscription subscription = findOwned(userId);
-        subscription.cancel();
-        portOneClient.deleteBillingKey(subscription.getBillingKey());
+        subscription.scheduleCancellation();
+        return SubscriptionResponse.from(subscription);
     }
 
     public SubscriptionResponse getMySubscription(Long userId) {
-        return SubscriptionResponse.from(findOwned(userId));
+        Subscription subscription = subscriptionRepository.findFirstByUserIdOrderByIdDesc(userId)
+                .orElseThrow(SubscriptionNotFoundException::new);
+        return SubscriptionResponse.from(subscription);
+    }
+
+    /** 유료 혜택 게이팅용 — 소유(ACTIVE/PAST_DUE) 구독 보유 여부. 응시 한도·모델 티어 판정에 쓴다. */
+    public boolean hasActiveSubscription(Long userId) {
+        LocalDateTime now = LocalDateTime.now();
+        return subscriptionRepository.findByUserIdAndStatusIn(userId, OWNED_ACTIVE_STATUSES)
+                .filter(subscription -> !subscription.isCancelAtPeriodEnd()
+                        || now.isBefore(subscription.getNextBillingAt()))
+                .isPresent();
     }
 
     /** 재결제 스케줄러가 오늘 청구 대상인 구독 id 목록을 조회할 때 사용한다. */
     public List<Long> findDueSubscriptionIds(LocalDateTime now) {
-        return subscriptionRepository.findByStatusInAndNextBillingAtLessThanEqual(OWNED_ACTIVE_STATUSES, now)
+        return subscriptionRepository.findByStatusInAndCancelAtPeriodEndFalseAndNextBillingAtLessThanEqual(
+                        OWNED_ACTIVE_STATUSES, now)
                 .stream().map(Subscription::getId).toList();
+    }
+
+    /** 취소 예약된 구독은 결제 시각이 되면 청구 없이 종료하고 빌링키를 폐기한다. */
+    @Transactional
+    public void expireDueCancellations(LocalDateTime now) {
+        for (Subscription subscription : subscriptionRepository
+                .findByCancelAtPeriodEndTrueAndNextBillingAtLessThanEqual(now)) {
+            if (subscription.expireScheduledCancellation(now)) {
+                portOneClient.deleteBillingKey(subscription.getBillingKey());
+            }
+        }
     }
 
     /** 구독 1건 재결제. 스케줄러가 건별로 호출한다(자기 자신 호출로 인한 트랜잭션 프록시 우회 방지). */
@@ -112,7 +138,7 @@ public class SubscriptionService {
 
         // due 목록 조회와 실제 청구 사이에 취소/만료됐을 수 있다. 재확인 없이 청구하면
         // 취소된 구독에 돈이 나가고, 이후 CANCELED→ACTIVE 전환 예외로 결제 원장까지 롤백된다.
-        if (!OWNED_ACTIVE_STATUSES.contains(subscription.getStatus())) {
+        if (!OWNED_ACTIVE_STATUSES.contains(subscription.getStatus()) || subscription.isCancelAtPeriodEnd()) {
             log.info("재결제 대상 상태가 아니라 스킵: subscriptionId={}, status={}",
                     subscriptionId, subscription.getStatus());
             return;
