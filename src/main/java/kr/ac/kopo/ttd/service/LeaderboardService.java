@@ -1,5 +1,6 @@
 package kr.ac.kopo.ttd.service;
 
+import kr.ac.kopo.ttd.common.constant.ScoreWeights;
 import kr.ac.kopo.ttd.domain.AttemptStatus;
 import kr.ac.kopo.ttd.domain.User;
 import kr.ac.kopo.ttd.dto.LeaderboardEntryResponse;
@@ -47,7 +48,7 @@ public class LeaderboardService {
 
             double attempts = isProblemFilter ? totalAttempts : (double) totalAttempts / distinctProblems;
             double tokens = isProblemFilter ? totalTokens : (double) totalTokens / distinctProblems;
-            double total = avgQuality * 0.6 + avgEfficiency * 0.4;
+            double total = avgQuality * ScoreWeights.RUBRIC + avgEfficiency * ScoreWeights.EFFICIENCY;
 
             aggregates.add(new UserAggregate(uid, avgQuality, avgEfficiency, attempts, tokens, total));
         }

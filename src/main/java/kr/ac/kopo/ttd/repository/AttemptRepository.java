@@ -42,7 +42,7 @@ public interface AttemptRepository extends JpaRepository<Attempt, Long> {
                 count(a),
                 avg(case when a.status = :graded then a.rubricScore end),
                 avg(case when a.status = :graded then a.efficiencyScore end),
-                max(case when a.status = :graded then a.rubricScore * 0.6 + a.efficiencyScore * 0.4 end),
+                max(case when a.status = :graded then a.finalScore * 1.0 end),
                 coalesce(sum(a.totalTokens), 0L),
                 coalesce(100.0 * sum(case when a.status = :graded then 1 else 0 end) / nullif(count(a), 0L), 0.0)
             )
