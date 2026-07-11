@@ -1,4 +1,7 @@
 spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
   ai:
     openai:
       api-key: dummy-test-key

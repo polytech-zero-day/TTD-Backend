@@ -19,9 +19,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class AdminAccountInitializer implements ApplicationRunner {
 
-    /** 노출된 기본 비밀번호. 운영에서 이대로 뜨면 즉시 탈취 대상이므로 기동 시 경고한다. */
-    private static final String DEFAULT_ADMIN_PASSWORD = "admin1234!";
-
     private final UserRepository userRepository;
     private final UserAdminService userAdminService;
     private final String adminEmail;
@@ -46,10 +43,9 @@ public class AdminAccountInitializer implements ApplicationRunner {
         if (userRepository.existsByRole(UserRole.ADMIN)) {
             return;
         }
-        if (DEFAULT_ADMIN_PASSWORD.equals(adminPassword)) {
-            log.warn("""
-                    ⚠️ 관리자 시드 계정이 기본 비밀번호로 생성됩니다. 운영 배포 시 반드시
-                    ADMIN_INIT_PASSWORD 환경변수로 강한 비밀번호를 지정하세요 (email={}).""", adminEmail);
+        if (adminPassword == null || adminPassword.isBlank()) {
+            log.warn("관리자 계정이 없지만 ADMIN_INIT_PASSWORD가 설정되지 않아 시드 생성을 건너뜁니다.");
+            return;
         }
         userAdminService.createUser(new UserCreateRequest(adminEmail, adminPassword, adminNickname, UserRole.ADMIN));
     }

@@ -7,7 +7,6 @@ import kr.ac.kopo.ttd.config.RestAuthenticationEntryPoint;
 import kr.ac.kopo.ttd.config.SecurityConfig;
 import kr.ac.kopo.ttd.domain.UserRole;
 import kr.ac.kopo.ttd.dto.LoginRequest;
-import kr.ac.kopo.ttd.dto.RefreshRequest;
 import kr.ac.kopo.ttd.dto.SignupRequest;
 import kr.ac.kopo.ttd.dto.TokenResponse;
 import kr.ac.kopo.ttd.dto.UserResponse;
@@ -18,6 +17,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import jakarta.servlet.http.Cookie;
 
 import java.time.LocalDateTime;
 
@@ -67,21 +68,24 @@ class AuthControllerTest {
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.accessToken").value("access-token"));
+                .andExpect(jsonPath("$.data.accessToken").value("access-token"))
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
+                .andExpect(result -> org.assertj.core.api.Assertions.assertThat(
+                        result.getResponse().getHeader("Set-Cookie")).contains("ttd_refresh=refresh-token").contains("HttpOnly"));
     }
 
     @Test
     void 토큰_재발급은_인증_없이_호출할_수_있다() throws Exception {
-        RefreshRequest request = new RefreshRequest("refresh-token");
         given(authService.refresh(any())).willReturn(
                 new TokenResponse("new-access-token", "new-refresh-token", "Bearer", 1800L)
         );
 
         mockMvc.perform(post("/api/auth/refresh")
-                        .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(request)))
+                        .cookie(new Cookie("ttd_refresh", "refresh-token")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.accessToken").value("new-access-token"));
+                .andExpect(jsonPath("$.data.accessToken").value("new-access-token"))
+                .andExpect(result -> org.assertj.core.api.Assertions.assertThat(
+                        result.getResponse().getHeader("Set-Cookie")).contains("ttd_refresh=new-refresh-token"));
     }
 
     @Test

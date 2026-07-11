@@ -55,14 +55,14 @@ public class AiModelSettingService {
     }
 
     /**
-     * 유료 사용자는 응시 시작 전에 기본·상위 모델 중 하나를 선택할 수 있다.
+     * 유료 사용자는 관리자 설정에서 허용한 모델 중 하나를 선택할 수 있다.
      * 무료 사용자는 요청값과 관계없이 관리자 설정의 기본 CHAT 모델을 사용한다.
      */
     public String chatModelFor(boolean premium, String selectedModel) {
         if (!premium || selectedModel == null || selectedModel.isBlank()) {
             return chatModelFor(premium);
         }
-        if (!List.of(defaultModel, premiumChatModel).contains(selectedModel)) {
+        if (!availableModels.contains(selectedModel)) {
             throw new BusinessException(ErrorCode.INVALID_AI_MODEL);
         }
         return selectedModel;

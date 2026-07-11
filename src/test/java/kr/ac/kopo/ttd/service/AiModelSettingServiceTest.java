@@ -102,6 +102,11 @@ class AiModelSettingServiceTest {
     }
 
     @Test
+    void 유료_응시는_허용된_세번째_모델도_선택할_수_있다() {
+        assertThat(service().chatModelFor(true, "gpt-5.4-nano")).isEqualTo("gpt-5.4-nano");
+    }
+
+    @Test
     void 무료_응시는_CHAT_용도_설정_모델을_쓴다() {
         given(repository.findByPurpose(AiPurpose.CHAT)).willReturn(Optional.empty());
 

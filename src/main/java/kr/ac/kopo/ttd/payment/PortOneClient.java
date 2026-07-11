@@ -103,11 +103,11 @@ public class PortOneClient {
                     : (response != null ? response.status() : "EMPTY_RESPONSE");
             return PortOnePaymentResult.failed(reason);
         }
-        // 승인 금액 검증: 응답 금액이 요청 금액과 다르면 성공으로 처리하지 않는다(할인/변조 방어).
-        // 잠정 스키마라 금액 필드가 없으면(null) 검증만 건너뛰고 경고 — 스키마 확정 후 fail-closed로 강화 필요.
+        // 승인 금액 검증: 응답 금액이 없거나 요청 금액과 다르면 성공으로 처리하지 않는다.
         Long paidTotal = response.amount() != null ? response.amount().total() : null;
         if (paidTotal == null) {
-            log.warn("PortOne 응답에 결제 금액이 없어 금액 검증을 건너뜀(스키마 확인 필요): expected={}", expectedAmountKrw);
+            log.error("PortOne 응답에 결제 금액이 없어 승인을 거부: expected={}", expectedAmountKrw);
+            return PortOnePaymentResult.failed("AMOUNT_MISSING");
         } else if (paidTotal != expectedAmountKrw) {
             log.error("PortOne 승인 금액 불일치: expected={}, actual={}", expectedAmountKrw, paidTotal);
             return PortOnePaymentResult.failed("AMOUNT_MISMATCH: expected " + expectedAmountKrw + " got " + paidTotal);
