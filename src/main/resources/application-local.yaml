@@ -1,0 +1,32 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+  h2:
+    console:
+      enabled: true
+  jpa:
+    hibernate:
+      # 로컬 H2는 매번 엔티티 변경을 바로 반영할 수 있어야 한다.
+      ddl-auto: update
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:local-openai-key}
+
+app:
+  security:
+    # 개발 전용 키. 배포 프로필에서는 반드시 환경변수로 주입한다.
+    aes-key: ${AES_SECRET_KEY:MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=}
+    hmac-key: ${HMAC_SECRET_KEY:YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU2Nzg5MDE=}
+  jwt:
+    secret-key: ${JWT_SECRET_KEY:YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU2Nzg5MDE=}
+  admin-init:
+    password: ${ADMIN_INIT_PASSWORD:admin1234!}
+  portone:
+    # 애플리케이션 기동용 더미값. 결제 모의 승인은 기본적으로 비활성화되어 있다.
+    store-id: ${PORTONE_STORE_ID:local-store-id}
+    api-secret: ${PORTONE_API_SECRET:local-api-secret}
+    channel-key: ${PORTONE_CHANNEL_KEY:local-channel-key}
+  auth:
+    # localhost HTTP 개발 환경에서는 Secure 쿠키를 브라우저가 전송하지 않는다.
+    refresh-cookie-secure: false
