@@ -43,4 +43,15 @@ class AdminAccountInitializerTest {
 
         verify(userAdminService).createUser(any());
     }
+
+    @Test
+    void 관리자_비밀번호가_없으면_시드_계정을_생성하지_않는다() {
+        given(userRepository.existsByRole(UserRole.ADMIN)).willReturn(false);
+        AdminAccountInitializer initializer = new AdminAccountInitializer(
+                userRepository, userAdminService, "admin@ttd.local", "", "admin");
+
+        initializer.run(null);
+
+        verify(userAdminService, never()).createUser(any());
+    }
 }

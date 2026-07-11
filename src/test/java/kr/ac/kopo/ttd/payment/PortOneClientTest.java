@@ -48,14 +48,14 @@ class PortOneClientTest {
     }
 
     @Test
-    void 금액_필드가_없으면_검증을_건너뛰고_상태만으로_성공_처리한다() {
-        // 잠정 스키마 방어 — 금액 필드 부재 시 결제 자체가 막히지 않도록(검증만 스킵)
+    void 금액_필드가_없으면_승인을_거부한다() {
         MockRestServiceServer[] holder = new MockRestServiceServer[1];
         PortOneClient client = clientRespondingWith("{\"status\":\"PAID\"}", holder);
 
         PortOnePaymentResult result = client.payWithBillingKey("pay-1", "bk", PRICE, "주문");
 
-        assertThat(result.success()).isTrue();
+        assertThat(result.success()).isFalse();
+        assertThat(result.failReason()).isEqualTo("AMOUNT_MISSING");
     }
 
     @Test
