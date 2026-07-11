@@ -45,9 +45,19 @@ class ProblemControllerIntegrationTest {
     }
 
     @Test
-    void 미인증_사용자는_응시자용_목록_조회가_401이다() throws Exception {
+    void 미인증_사용자는_문제_목록을_조회할_수_있다() throws Exception {
         mockMvc.perform(get("/api/problems"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.length()").value(10));
+    }
+
+    @Test
+    void 미인증_사용자는_문제_상세를_조회할_수_있다() throws Exception {
+        mockMvc.perform(get("/api/problems/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").value(1));
     }
 
     @Test
