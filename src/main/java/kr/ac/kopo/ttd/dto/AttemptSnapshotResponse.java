@@ -9,4 +9,5 @@ public record AttemptSnapshotResponse(
         long remainingSeconds,
         AttemptUsageResponse usage,
         List<ChatMessageResponse> messages,
-        String draft) {}
+        String draft,
+        String chatModel) {}

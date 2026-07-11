@@ -120,6 +120,10 @@ paths:
       responses:
         "200":
           description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseSubscriptionResponse"
       security:
       - bearerAuth: []
   /api/subscriptions:
@@ -897,6 +901,11 @@ components:
         canceledAt:
           type: string
           format: date-time
+        cancelAtPeriodEnd:
+          type: boolean
+        cancelRequestedAt:
+          type: string
+          format: date-time
     SignupRequest:
       type: object
       properties:
@@ -995,6 +1004,9 @@ components:
         problemId:
           type: integer
           format: int64
+        chatModel:
+          type: string
+          description: PAID 사용자가 응시 시작 전에 선택하는 모델. 미지정 시 플랜 기본 모델을 사용한다.
       required:
       - problemId
     ApiResponseAttemptSnapshotResponse:
