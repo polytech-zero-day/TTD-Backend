@@ -22,7 +22,6 @@ import java.time.LocalDateTime;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -61,7 +60,7 @@ class SubscriptionControllerTest {
     @Test
     void 구독을_등록하면_201과_상태를_반환한다() throws Exception {
         SubscriptionResponse response = new SubscriptionResponse(
-                SubscriptionStatus.ACTIVE, LocalDateTime.now(), LocalDateTime.now().plusMonths(1), null);
+                SubscriptionStatus.ACTIVE, LocalDateTime.now(), LocalDateTime.now().plusMonths(1), null, false, null);
         given(subscriptionService.subscribe(eq(USER_ID), any())).willReturn(response);
 
         mockMvc.perform(post("/api/subscriptions")
@@ -82,17 +81,21 @@ class SubscriptionControllerTest {
     }
 
     @Test
-    void 구독을_취소하면_204를_반환한다() throws Exception {
-        doNothing().when(subscriptionService).cancel(USER_ID);
+    void 구독을_취소하면_기간_종료_예약_상태를_반환한다() throws Exception {
+        SubscriptionResponse response = new SubscriptionResponse(
+                SubscriptionStatus.ACTIVE, LocalDateTime.now(), LocalDateTime.now().plusMonths(1),
+                null, true, LocalDateTime.now());
+        given(subscriptionService.cancel(USER_ID)).willReturn(response);
 
         mockMvc.perform(delete("/api/subscriptions").header("Authorization", bearerToken()))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.cancelAtPeriodEnd").value(true));
     }
 
     @Test
     void 내_구독_상태를_조회한다() throws Exception {
         SubscriptionResponse response = new SubscriptionResponse(
-                SubscriptionStatus.PAST_DUE, LocalDateTime.now(), LocalDateTime.now(), null);
+                SubscriptionStatus.PAST_DUE, LocalDateTime.now(), LocalDateTime.now(), null, false, null);
         given(subscriptionService.getMySubscription(USER_ID)).willReturn(response);
 
         mockMvc.perform(get("/api/subscriptions/me").header("Authorization", bearerToken()))

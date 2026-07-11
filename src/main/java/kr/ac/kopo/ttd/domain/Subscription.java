@@ -52,6 +52,14 @@ public class Subscription {
     @Column(name = "canceled_at")
     private LocalDateTime canceledAt;
 
+    /** 다음 결제 시각까지 혜택을 유지한 뒤 자동 종료할지 여부. */
+    @Column(name = "cancel_at_period_end", nullable = false)
+    @Builder.Default
+    private boolean cancelAtPeriodEnd = false;
+
+    @Column(name = "cancel_requested_at")
+    private LocalDateTime cancelRequestedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -81,6 +89,22 @@ public class Subscription {
         }
     }
 
+    /** 자동 갱신만 중단한다. 현재 결제 주기와 유료 혜택은 nextBillingAt 직전까지 유지한다. */
+    public void scheduleCancellation() {
+        this.cancelAtPeriodEnd = true;
+        this.cancelRequestedAt = LocalDateTime.now();
+    }
+
+    /** 예약 취소의 기간이 끝났을 때만 실제 CANCELED로 전환한다. */
+    public boolean expireScheduledCancellation(LocalDateTime now) {
+        if (!cancelAtPeriodEnd || now.isBefore(nextBillingAt)) {
+            return false;
+        }
+        cancel();
+        return true;
+    }
+
+    /** 결제 실패 등 즉시 종료가 필요한 내부 경로에서 사용한다. */
     public void cancel() {
         changeStatus(SubscriptionStatus.CANCELED);
         this.canceledAt = LocalDateTime.now();
