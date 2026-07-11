@@ -1,6 +1,5 @@
 package kr.ac.kopo.ttd.controller;
 
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import kr.ac.kopo.ttd.common.ApiResponse;
 import kr.ac.kopo.ttd.dto.LeaderboardResponse;
 import kr.ac.kopo.ttd.service.LeaderboardService;
@@ -14,7 +13,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/leaderboard")
 @RequiredArgsConstructor
-@SecurityRequirement(name = "bearerAuth")
 public class LeaderboardController {
 
     private final LeaderboardService leaderboardService;

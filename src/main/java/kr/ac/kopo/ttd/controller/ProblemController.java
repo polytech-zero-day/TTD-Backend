@@ -1,6 +1,5 @@
 package kr.ac.kopo.ttd.controller;
 
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import kr.ac.kopo.ttd.common.ApiResponse;
 import kr.ac.kopo.ttd.dto.ProblemResponse;
 import kr.ac.kopo.ttd.dto.ProblemSummaryResponse;
@@ -19,7 +18,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/problems")
 @RequiredArgsConstructor
-@SecurityRequirement(name = "bearerAuth")
 public class ProblemController {
 
     private final ProblemService problemService;
