@@ -33,7 +33,7 @@ public class CalibrationRunner {
         List<CalibrationSample> samples = calibrationSampleRepository.findAll();
         List<CalibrationRunResponse.Row> rows = new ArrayList<>();
         for (CalibrationSample sample : samples) {
-            rows.add(evaluate(sample, highMin, midMin, tolerance));
+            rows.add(evaluate(sample, highMin, midMin));
         }
         return new CalibrationRunResponse(
                 new CalibrationRunResponse.Config(highMin, midMin, tolerance),
@@ -41,7 +41,7 @@ public class CalibrationRunner {
                 rows);
     }
 
-    private CalibrationRunResponse.Row evaluate(CalibrationSample sample, int highMin, int midMin, int tolerance) {
+    private CalibrationRunResponse.Row evaluate(CalibrationSample sample, int highMin, int midMin) {
         boolean placeholder = sample.getSampleAnswer().startsWith(PLACEHOLDER_PREFIX);
         try {
             RubricGrader.RubricResult result =
