@@ -16,7 +16,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.BDDMockito.given;
@@ -69,11 +68,11 @@ class CalibrationRunnerTest {
                 sample(CalibrationTier.HIGH, 95, "상급 답안"),
                 sample(CalibrationTier.MID, 68, "중급 답안"),
                 sample(CalibrationTier.LOW, 30, "하급 답안")));
-        given(rubricGrader.grade(any(), contains("상급"), any()))
+        given(rubricGrader.gradeCalibration(org.mockito.ArgumentMatchers.any(), contains("상급")))
                 .willReturn(new RubricGrader.RubricResult(90, "좋음", java.util.List.of()));   // HIGH 일치, 오차 5
-        given(rubricGrader.grade(any(), contains("중급"), any()))
+        given(rubricGrader.gradeCalibration(org.mockito.ArgumentMatchers.any(), contains("중급")))
                 .willReturn(new RubricGrader.RubricResult(75, "무난", java.util.List.of()));   // HIGH 판정 — MID 불일치, 오차 7
-        given(rubricGrader.grade(any(), contains("하급"), any()))
+        given(rubricGrader.gradeCalibration(org.mockito.ArgumentMatchers.any(), contains("하급")))
                 .willReturn(new RubricGrader.RubricResult(25, "부족", java.util.List.of()));   // LOW 일치, 오차 5
 
         CalibrationRunResponse response = calibrationRunner.run(70, 40, 15);
@@ -91,7 +90,7 @@ class CalibrationRunnerTest {
         given(calibrationSampleRepository.findAll()).willReturn(List.of(
                 sample(CalibrationTier.HIGH, 95, "[임시] 정답 100% 일치 요약"),
                 sample(CalibrationTier.LOW, 30, "실제 하급 답안")));
-        given(rubricGrader.grade(any(), anyString(), any()))
+        given(rubricGrader.gradeCalibration(org.mockito.ArgumentMatchers.any(), anyString()))
                 .willReturn(new RubricGrader.RubricResult(20, "부족", java.util.List.of()));
 
         CalibrationRunResponse response = calibrationRunner.run(70, 40, 15);
@@ -109,9 +108,9 @@ class CalibrationRunnerTest {
         given(calibrationSampleRepository.findAll()).willReturn(List.of(
                 sample(CalibrationTier.HIGH, 95, "실패할 답안"),
                 sample(CalibrationTier.LOW, 30, "정상 답안")));
-        given(rubricGrader.grade(any(), contains("실패할"), any()))
+        given(rubricGrader.gradeCalibration(org.mockito.ArgumentMatchers.any(), contains("실패할")))
                 .willThrow(new IllegalStateException("파싱 실패"));
-        given(rubricGrader.grade(any(), contains("정상"), any()))
+        given(rubricGrader.gradeCalibration(org.mockito.ArgumentMatchers.any(), contains("정상")))
                 .willReturn(new RubricGrader.RubricResult(25, "부족", java.util.List.of()));
 
         CalibrationRunResponse response = calibrationRunner.run(70, 40, 15);
