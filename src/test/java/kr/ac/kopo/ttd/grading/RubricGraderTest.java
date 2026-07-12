@@ -151,7 +151,11 @@ class RubricGraderTest {
         ArgumentCaptor<String> systemPrompt = ArgumentCaptor.forClass(String.class);
         verify(aiClient).chatJson(systemPrompt.capture(), messages.capture(), any());
 
-        assertThat(systemPrompt.getValue()).contains("응시 프롬프트").contains("실제 실행 결과물이 아닙니다");
+        assertThat(systemPrompt.getValue())
+                .contains("응시 프롬프트")
+                .contains("실제 실행 결과물이 아닙니다")
+                .contains("후보 프롬프트에 명시된 지시만 점수로 인정")
+                .contains("중요한 요구사항·제약·출력 조건을 하나 이상 빠뜨렸다");
         assertThat(messages.getValue().get(0).getText())
                 .contains("문제 설명: 설명")
                 .contains("문제 요구사항: 따옴표 처리 / 공백 유지")
