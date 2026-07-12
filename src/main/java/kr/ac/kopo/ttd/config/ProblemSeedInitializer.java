@@ -32,8 +32,8 @@ import java.util.List;
  * 자식 데이터는 서비스가 없으므로 리포지토리로 직접 저장한다.
  * <p>
  * 캘리브레이션 sample_answer는 상/중/하 티어별 실제 응시 프롬프트(가답안)로 채워 루브릭 채점기의
- * 기준선 측정에 그대로 쓴다. 문제 7~10의 TestCase 입력/기대출력은 아직 구체 데이터가 없어
- * "[임시]" 요약 텍스트로 두었으며, 실제 데이터 확보 후 교체 예정이다.
+ * 기준선 측정에 그대로 쓴다. 문제 7~10의 TestCase 입력/기대출력도 문제 규칙에 맞는 구체 샘플로
+ * 채워, 문제별 예시 입출력이 플레이스홀더 없이 일관되게 제공된다.
  */
 @Component
 public class ProblemSeedInitializer implements ApplicationRunner {
@@ -426,7 +426,7 @@ public class ProblemSeedInitializer implements ApplicationRunner {
                         null,
                         null
                 ),
-                // 그룹 3. 스켈레톤 개선형 (문제 7~10, AUTO_GRADED) — TestCase는 [임시] 플레이스홀더
+                // 그룹 3. 스켈레톤 개선형 (문제 7~10, AUTO_GRADED) — 문제 규칙에 맞는 구체 입력/기대출력 사용
                 new ProblemSeed(
                         new ProblemCreateRequest(
                                 "CSV 로드 후 기초 통계 출력",
@@ -466,8 +466,30 @@ public class ProblemSeedInitializer implements ApplicationRunner {
                                 이 sensor_log.csv 읽는 코드에서, sensor_type별 value의 평균·최대·최소를 구하고 status가 error인 행 개수도 세서 출력하도록 바꿔줘. pandas는 그대로 쓰면 돼.""",
                                 26, "이 코드 좀 분석해줘"
                         ),
-                        "[임시] sensor_log.csv 샘플 데이터(sensor_id, timestamp, sensor_type, value, status, location) — 추후 실데이터로 교체",
-                        "[임시] sensor_type별 평균/최대/최소 통계 표, status=error 행 개수(정수), location별 카운트 내림차순 — 추후 교체"
+                        """
+                        sensor_id,timestamp,sensor_type,value,status,location
+                        S001,2026-07-10T09:00:00,temperature,21.5,ok,seoul
+                        S002,2026-07-10T09:00:00,humidity,45.0,ok,seoul
+                        S003,2026-07-10T09:01:00,temperature,23.1,ok,busan
+                        S004,2026-07-10T09:01:00,temperature,99.9,error,busan
+                        S005,2026-07-10T09:02:00,humidity,50.2,ok,seoul
+                        S006,2026-07-10T09:02:00,temperature,20.0,ok,daegu
+                        S007,2026-07-10T09:03:00,humidity,-1.0,error,busan
+                        S008,2026-07-10T09:03:00,temperature,22.4,ok,seoul
+                        """,
+                        """
+                        [sensor_type별 통계]
+                        temperature: 평균 37.38, 최대 99.9, 최소 20.0
+                        humidity: 평균 31.4, 최대 50.2, 최소 -1.0
+
+                        [status=error 행 개수]
+                        2
+
+                        [location별 행 수 (내림차순)]
+                        seoul: 4
+                        busan: 3
+                        daegu: 1
+                        """
                 ),
                 new ProblemSeed(
                         new ProblemCreateRequest(
@@ -510,8 +532,16 @@ public class ProblemSeedInitializer implements ApplicationRunner {
                                 이 HTTP 서버가 /health로 오면 200에 OK를, /time으로 오면 현재 시각 HH:MM:SS를 반환하도록 self.path로 분기해서 고쳐줘. 표준 라이브러리만 쓰고 포트 8080은 유지해줘.""",
                                 24, "이 서버에 라우팅 좀 추가해줘"
                         ),
-                        "[임시] 요청 경로 시나리오: GET /health, GET /time, GET /unknown — 추후 실제 요청/응답 데이터로 교체",
-                        "[임시] /health→200 OK, /time→200 HH:MM:SS, 그 외→404 Not Found — 추후 교체"
+                        """
+                        GET /health
+                        GET /time
+                        GET /status
+                        """,
+                        """
+                        GET /health -> 200, "OK"
+                        GET /time   -> 200, "14:23:07"   (현재 시각 HH:MM:SS 형식이라 실행 시각에 따라 값은 달라짐)
+                        GET /status -> 404, "Not Found"
+                        """
                 ),
                 new ProblemSeed(
                         new ProblemCreateRequest(
@@ -550,8 +580,48 @@ public class ProblemSeedInitializer implements ApplicationRunner {
                                 이 로그 파서가 IP별로 요청 수를 세서, 요청이 30회 이상인 IP를 이상 IP로 보고 목록이랑 요청 수를 출력하게 해줘. status_code가 5xx인 것도 개수 세서 출력하고. 표준 라이브러리만 써줘.""",
                                 27, "이 로그에 이상 감지 기능 좀 넣어줘"
                         ),
-                        "[임시] access_log.txt 샘플(timestamp ip path status_code, 공백 구분) — 추후 실데이터로 교체",
-                        "[임시] 이상 IP 목록과 각 IP의 총 요청 수, 5xx 요청 수 집계 — 추후 교체"
+                        """
+                        12:00:00 10.0.0.5 /api 200
+                        12:00:01 10.0.0.5 /api 200
+                        12:00:02 10.0.0.5 /api 200
+                        12:00:03 10.0.0.5 /api 200
+                        12:00:04 10.0.0.5 /api 200
+                        12:00:05 10.0.0.9 /home 200
+                        12:00:05 10.0.0.5 /api 200
+                        12:00:06 10.0.0.5 /api 200
+                        12:00:07 10.0.0.5 /api 200
+                        12:00:08 10.0.0.5 /api 200
+                        12:00:09 10.0.0.5 /api 200
+                        12:00:10 10.0.0.5 /api 503
+                        12:00:11 10.0.0.5 /api 200
+                        12:00:12 10.0.0.5 /api 200
+                        12:00:13 10.0.0.5 /api 200
+                        12:00:14 10.0.0.5 /api 200
+                        12:00:15 10.0.0.5 /api 200
+                        12:00:16 10.0.0.5 /api 200
+                        12:00:17 10.0.0.5 /api 200
+                        12:00:18 10.0.0.5 /api 200
+                        12:00:19 10.0.0.5 /api 200
+                        12:00:20 10.0.0.9 /home 200
+                        12:00:20 10.0.0.5 /api 200
+                        12:00:21 10.0.0.5 /api 200
+                        12:00:22 10.0.0.5 /api 200
+                        12:00:23 10.0.0.5 /api 200
+                        12:00:24 10.0.0.5 /api 200
+                        12:00:25 10.0.0.5 /api 503
+                        12:00:26 10.0.0.5 /api 200
+                        12:00:27 10.0.0.5 /api 200
+                        12:00:28 10.0.0.5 /api 200
+                        12:00:29 10.0.0.5 /api 200
+                        12:00:45 10.0.0.7 /admin 500
+                        """,
+                        """
+                        [이상 IP (60초 내 30회 이상)]
+                        10.0.0.5: 총 30회
+
+                        [5xx 요청 수]
+                        3
+                        """
                 ),
                 new ProblemSeed(
                         new ProblemCreateRequest(
@@ -591,8 +661,30 @@ public class ProblemSeedInitializer implements ApplicationRunner {
                                 이 process 함수가 각 요청을 STORE, TIME, FULL, STOCK 순서로 검사해서 되면 (id, 'OK'), 안 되면 (id, 'FAIL', 사유)를 반환하도록 확장해줘. 총 성공 건수도 같이 반환해줘.""",
                                 25, "이 함수가 예약 처리하게 만들어줘"
                         ),
-                        "[임시] requests 리스트와 스토어 정보(오픈/마감/시간당 한도/재고) 딕셔너리 샘플 — 추후 실데이터로 교체",
-                        "[임시] (id, OK) / (id, FAIL, 사유) 결과 리스트와 총 성공 건수 — 추후 교체"
+                        """
+                        [stores]
+                        1: open=10:00, close=18:00, hourly_limit=2, stock={A001:5, A002:3}
+                        2: open=09:00, close=12:00, hourly_limit=1, stock={B001:2}
+
+                        [requests]
+                        {"id":1, "store":1, "item":"A001", "qty":2, "time":"10:30"}
+                        {"id":2, "store":1, "item":"A001", "qty":2, "time":"10:45"}
+                        {"id":3, "store":1, "item":"A001", "qty":1, "time":"10:50"}
+                        {"id":4, "store":1, "item":"A002", "qty":5, "time":"11:00"}
+                        {"id":5, "store":2, "item":"B001", "qty":1, "time":"08:00"}
+                        {"id":6, "store":3, "item":"X001", "qty":1, "time":"10:00"}
+                        {"id":7, "store":2, "item":"B001", "qty":1, "time":"10:00"}
+                        """,
+                        """
+                        1, OK
+                        2, OK
+                        3, FAIL, FULL
+                        4, FAIL, STOCK
+                        5, FAIL, TIME
+                        6, FAIL, STORE
+                        7, OK
+                        총 성공: 3
+                        """
                 )
         );
     }
