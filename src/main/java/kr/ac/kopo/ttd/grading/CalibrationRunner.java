@@ -45,7 +45,7 @@ public class CalibrationRunner {
         boolean placeholder = sample.getSampleAnswer().startsWith(PLACEHOLDER_PREFIX);
         try {
             RubricGrader.RubricResult result =
-                    rubricGrader.grade(sample.getProblem(), sample.getSampleAnswer(), List.of());
+                    rubricGrader.gradeCalibration(sample.getProblem(), sample.getSampleAnswer());
             CalibrationTier gradedTier = toTier(result.score(), highMin, midMin);
             int scoreDiff = Math.abs(result.score() - sample.getReferenceScore());
             return new CalibrationRunResponse.Row(
