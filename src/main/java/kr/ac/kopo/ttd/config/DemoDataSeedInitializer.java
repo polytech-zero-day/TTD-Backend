@@ -15,9 +15,10 @@ import kr.ac.kopo.ttd.repository.ProblemRepository;
 import kr.ac.kopo.ttd.repository.UserRepository;
 import kr.ac.kopo.ttd.service.UserAdminService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -26,10 +27,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.UUID;
 
 /**
  * 발표 시연용 데모 데이터 시딩. 리더보드·산점도·마이페이지가 풍성하게 보이도록 가짜 응시자와
- * GRADED 응시 기록을 다량 심는다. {@code @Profile("demo")}로 데모 프로필에서만 실행되어
+ * GRADED 응시 기록을 다량 심는다. {@code DEMO_SEED_ENABLED=true}일 때만 실행되어
  * 운영/일반 로컬 DB를 오염시키지 않는다.
  * <p>
  * 설계 원칙(docs/데모데이터시딩_분석.md 준수):
@@ -45,7 +47,7 @@ import java.util.Random;
  */
 @Slf4j
 @Component
-@Profile("demo")
+@ConditionalOnProperty(prefix = "app.demo-seed", name = "enabled", havingValue = "true")
 @Order(2)
 public class DemoDataSeedInitializer implements ApplicationRunner {
 
@@ -64,11 +66,6 @@ public class DemoDataSeedInitializer implements ApplicationRunner {
     private static final int SUBMITTED_WITHIN_DAYS = 21;       // 최근 N일 내 랜덤 제출 시각
 
     // ── 데모 로그인 계정 (시연에서 로그인해 마이페이지 확인) ──────────────────────────────
-    private static final String DEMO_LOGIN_EMAIL = "demo@ttd.local";
-    private static final String DEMO_LOGIN_PASSWORD = "demo1234!";
-    private static final String DEMO_LOGIN_NICKNAME = "데모현우";
-    private static final String DEMO_USER_PASSWORD = "seed1234!"; // 나머지 유저 공통(로그인 불필요)
-
     // 리더보드에 노출될 닉네임 풀(데모 로그인 계정 제외 17명 이상 필요).
     private static final List<String> NICKNAMES = List.of(
             "김서준", "이지우", "박도윤", "최하은", "정예준", "강수아", "조민준", "윤서연",
@@ -101,6 +98,10 @@ public class DemoDataSeedInitializer implements ApplicationRunner {
     private final AttemptRepository attemptRepository;
     private final EfficiencyScorer efficiencyScorer;
     private final HmacHasher hmacHasher;
+    private final String demoLoginEmail;
+    private final String demoLoginPassword;
+    private final String demoLoginNickname;
+    private final String seedUserPassword = UUID.randomUUID() + "Aa1!";
 
     private final Random random = new Random(RANDOM_SEED);
 
@@ -109,20 +110,31 @@ public class DemoDataSeedInitializer implements ApplicationRunner {
                                    ProblemRepository problemRepository,
                                    AttemptRepository attemptRepository,
                                    EfficiencyScorer efficiencyScorer,
-                                   HmacHasher hmacHasher) {
+                                   HmacHasher hmacHasher,
+                                   @Value("${app.demo-seed.login-email:}") String demoLoginEmail,
+                                   @Value("${app.demo-seed.login-password:}") String demoLoginPassword,
+                                   @Value("${app.demo-seed.login-nickname:}") String demoLoginNickname) {
         this.userRepository = userRepository;
         this.userAdminService = userAdminService;
         this.problemRepository = problemRepository;
         this.attemptRepository = attemptRepository;
         this.efficiencyScorer = efficiencyScorer;
         this.hmacHasher = hmacHasher;
+        this.demoLoginEmail = demoLoginEmail;
+        this.demoLoginPassword = demoLoginPassword;
+        this.demoLoginNickname = demoLoginNickname;
     }
 
     @Override
     public void run(ApplicationArguments args) {
+        if (demoLoginEmail.isBlank() || demoLoginPassword.isBlank() || demoLoginNickname.isBlank()) {
+            log.error("[DemoSeed] DEMO_SEED_ENABLED=true지만 데모 로그인 환경변수가 누락되어 시딩을 건너뜁니다.");
+            return;
+        }
+
         // 멱등: 데모 로그인 계정이 이미 있으면 시딩을 건너뛴다.
-        if (userRepository.existsByEmailHash(hmacHasher.hash(DEMO_LOGIN_EMAIL))) {
-            log.info("[DemoSeed] 데모 데이터가 이미 존재하여 시딩을 건너뜁니다. (login={})", DEMO_LOGIN_EMAIL);
+        if (userRepository.existsByEmailHash(hmacHasher.hash(demoLoginEmail))) {
+            log.info("[DemoSeed] 데모 데이터가 이미 존재하여 시딩을 건너뜁니다.");
             return;
         }
 
@@ -146,14 +158,13 @@ public class DemoDataSeedInitializer implements ApplicationRunner {
             totalAttempts += seedAttemptsFor(user.id(), tier, isDemoLogin, problems, now);
         }
 
-        log.info("[DemoSeed] 완료 — 유저 {}명, GRADED 응시 {}건 시딩. 데모 로그인 계정: {} / {}",
-                USER_COUNT, totalAttempts, DEMO_LOGIN_EMAIL, DEMO_LOGIN_PASSWORD);
+        log.info("[DemoSeed] 완료 — 유저 {}명, GRADED 응시 {}건 시딩.", USER_COUNT, totalAttempts);
     }
 
     private UserResponse createUser(int index, boolean isDemoLogin) {
-        String email = isDemoLogin ? DEMO_LOGIN_EMAIL : String.format("demo-user-%02d@ttd.local", index + 1);
-        String password = isDemoLogin ? DEMO_LOGIN_PASSWORD : DEMO_USER_PASSWORD;
-        String nickname = isDemoLogin ? DEMO_LOGIN_NICKNAME : NICKNAMES.get((index - 1) % NICKNAMES.size());
+        String email = isDemoLogin ? demoLoginEmail : String.format("demo-user-%02d@ttd.local", index + 1);
+        String password = isDemoLogin ? demoLoginPassword : seedUserPassword;
+        String nickname = isDemoLogin ? demoLoginNickname : NICKNAMES.get((index - 1) % NICKNAMES.size());
         try {
             return userAdminService.createUser(new UserCreateRequest(email, password, nickname, UserRole.USER));
         } catch (RuntimeException e) {
