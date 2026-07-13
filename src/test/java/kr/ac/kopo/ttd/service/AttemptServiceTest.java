@@ -335,7 +335,10 @@ class AttemptServiceTest {
         Attempt attempt = inProgressAttempt(activeProblem());
         attempt.submit("최종 결과물", LocalDateTime.now());
         attempt.grade(90, 80, 86, "총평입니다.",
-                List.of(new RubricCriterion("요구사항 충족", 36, 40, "대체로 충족")));
+                List.of(
+                        new RubricCriterion("요구사항 충족", 36, 40, "대체로 충족"),
+                        new RubricCriterion("근거 제시의 구체성", 27, 30, "근거가 구체적"),
+                        new RubricCriterion("AI 활용 과정의 타당성", 27, 30, "검증 과정이 타당")));
         given(attemptRepository.findById(1L)).willReturn(Optional.of(attempt));
         given(messageRepository.findByAttemptIdOrderByIdAsc(attempt.getId())).willReturn(List.of(
                 AttemptMessage.builder().attempt(attempt).role(MessageRole.USER)
@@ -348,7 +351,7 @@ class AttemptServiceTest {
         AttemptResultResponse result = attemptService.getResult(USER_ID, 1L);
 
         assertThat(result.finalScore()).isEqualTo(86);
-        assertThat(result.criteria()).hasSize(1);
+        assertThat(result.criteria()).hasSize(3);
         assertThat(result.criteria().get(0).maxScore()).isEqualTo(40);
         assertThat(result.problemTitle()).isEqualTo("고객 문의 라우팅 판정");
         assertThat(result.attemptOrdinal()).isEqualTo(2);
@@ -356,6 +359,23 @@ class AttemptServiceTest {
         assertThat(result.tokenBudget()).isEqualTo(3000L);
         assertThat(result.messages()).hasSize(2);
         assertThat(result.messages().get(1).tokensUsed()).isEqualTo(500L);
+        assertThat(result.gradingConfidence()).isEqualTo("HIGH");
+        assertThat(result.gradingFlags()).isEmpty();
+    }
+
+    @Test
+    void 기존_루브릭으로_채점된_이력에는_새_신뢰도_정책을_소급_표시하지_않는다() {
+        Attempt attempt = inProgressAttempt(activeProblem());
+        attempt.submit("기존 결과물", LocalDateTime.now());
+        attempt.grade(90, 80, 86, "기존 총평",
+                List.of(new RubricCriterion("절차 설계의 타당성", 30, 30, "기존 기준")));
+        given(attemptRepository.findById(1L)).willReturn(Optional.of(attempt));
+        given(messageRepository.findByAttemptIdOrderByIdAsc(attempt.getId())).willReturn(List.of());
+
+        AttemptResultResponse result = attemptService.getResult(USER_ID, 1L);
+
+        assertThat(result.gradingConfidence()).isNull();
+        assertThat(result.gradingFlags()).isEmpty();
     }
 
     @Test
