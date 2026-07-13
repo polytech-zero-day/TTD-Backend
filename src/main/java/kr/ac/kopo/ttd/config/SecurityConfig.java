@@ -29,7 +29,7 @@ public class SecurityConfig {
     public SecurityConfig(
             @Value("${app.cors.allowed-origins}") List<String> corsAllowedOrigins,
             @Value("${spring.h2.console.enabled:false}") boolean h2ConsoleEnabled) {
-        this.corsAllowedOrigins = corsAllowedOrigins;
+        this.corsAllowedOrigins = List.copyOf(corsAllowedOrigins);
         this.h2ConsoleEnabled = h2ConsoleEnabled;
     }
 

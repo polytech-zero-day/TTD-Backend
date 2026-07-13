@@ -19,7 +19,7 @@ import java.util.Base64;
  */
 @Converter
 @Component
-public class AesGcmConverter implements AttributeConverter<String, String> {
+public final class AesGcmConverter implements AttributeConverter<String, String> {
 
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
     private static final int IV_LENGTH_BYTES = 12;

@@ -22,7 +22,7 @@ import java.util.UUID;
  * (실제 유효성은 Redis 저장값과의 대조로 {@code RefreshTokenRepository}에서 확인).
  */
 @Component
-public class JwtProvider {
+public final class JwtProvider {
 
     private static final String CLAIM_ROLE = "role";
     private static final String CLAIM_TOKEN_TYPE = "tokenType";

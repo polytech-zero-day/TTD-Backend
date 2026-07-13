@@ -7,6 +7,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -152,7 +153,7 @@ public class Attempt {
         this.efficiencyScore = efficiencyScore;
         this.finalScore = finalScore;
         this.feedback = feedback;
-        this.rubricDetail = rubricDetail;
+        this.rubricDetail = new ArrayList<>(rubricDetail);
     }
 
     private void changeStatus(AttemptStatus target) {

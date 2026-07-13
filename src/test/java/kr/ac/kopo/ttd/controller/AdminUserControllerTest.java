@@ -56,13 +56,17 @@ class AdminUserControllerTest {
     @WithMockUser(roles = "USER")
     void USER는_접근이_거부된다() throws Exception {
         mockMvc.perform(get("/api/admin/users"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("ACCESS_DENIED"));
     }
 
     @Test
     void 인증되지_않으면_접근이_거부된다() throws Exception {
         mockMvc.perform(get("/api/admin/users"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("UNAUTHENTICATED"));
     }
 
     @Test
