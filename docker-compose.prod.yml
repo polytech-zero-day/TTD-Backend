@@ -1,0 +1,61 @@
+name: ttd-backend-prod
+
+# EC2에 배포용 디렉터리(예: /opt/ttd-backend)를 만들고
+# 이 파일과 .env(.env.prod.example 참고)를 함께 둔 뒤 사용한다.
+# docker compose -f docker-compose.prod.yml up -d
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: ttd-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 96m
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: ttd-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 256m
+
+  backend:
+    image: ghcr.io/polytech-zero-day/ttd-backend:${IMAGE_TAG:-latest}
+    container_name: ttd-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # 프로필: local이 기본값으로 딸려오지 않도록 명시적으로 고정한다.
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${DB_HOST}:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      # 인스턴스 메모리가 작으므로 힙을 컨테이너 제한(mem_limit)에 맞춰 명시적으로 캡핑한다.
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75.0
+    ports:
+      - "8080:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    mem_limit: 512m

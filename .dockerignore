@@ -1,0 +1,11 @@
+.git
+.github
+.gradle
+.idea
+.claude
+build
+docs
+*.md
+.env
+.env.*
+!.env.prod.example
