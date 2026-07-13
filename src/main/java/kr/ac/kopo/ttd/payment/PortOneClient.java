@@ -99,7 +99,7 @@ public class PortOneClient {
     }
 
     private PortOnePaymentResult toResult(PortOnePaymentApiResponse response, long expectedAmountKrw) {
-        if (response == null || !"PAID".equalsIgnoreCase(response.status())) {
+        if (response == null || !"PAID".equals(response.status())) {
             String reason = response != null && response.failure() != null
                     ? response.failure().reason()
                     : (response != null ? response.status() : "EMPTY_RESPONSE");

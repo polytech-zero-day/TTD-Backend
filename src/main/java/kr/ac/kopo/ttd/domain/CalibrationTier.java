@@ -3,8 +3,6 @@ package kr.ac.kopo.ttd.domain;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
-import java.util.Locale;
-
 /**
  * 캘리브레이션 샘플 등급. DB에는 enum명(HIGH/MID/LOW)으로 저장하고,
  * JSON 직렬화/역직렬화는 한글(상/중/하)로 처리하여 프론트 계약과 일치시킨다.
@@ -29,7 +27,10 @@ public enum CalibrationTier {
             case "상" -> HIGH;
             case "중" -> MID;
             case "하" -> LOW;
-            default -> CalibrationTier.valueOf(value.toUpperCase(Locale.ROOT));
+            case "HIGH" -> HIGH;
+            case "MID" -> MID;
+            case "LOW" -> LOW;
+            default -> throw new IllegalArgumentException("알 수 없는 캘리브레이션 등급입니다: " + value);
         };
     }
 }

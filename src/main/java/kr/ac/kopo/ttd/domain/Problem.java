@@ -19,6 +19,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -92,8 +93,8 @@ public class Problem {
         this.type = type;
         this.sourceType = sourceType;
         this.description = description;
-        this.requirements = requirements;
-        this.constraints = constraints;
+        this.requirements = new ArrayList<>(requirements);
+        this.constraints = new ArrayList<>(constraints);
         this.skeletonCode = skeletonCode;
         this.maxAttempts = maxAttempts;
     }

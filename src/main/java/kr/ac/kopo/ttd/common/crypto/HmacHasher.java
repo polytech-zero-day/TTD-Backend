@@ -15,7 +15,7 @@ import java.util.HexFormat;
  * 동일 입력은 항상 동일 해시를 반환하므로 WHERE 조건/유니크 제약에 사용할 수 있다.
  */
 @Component
-public class HmacHasher {
+public final class HmacHasher {
 
     private static final String ALGORITHM = "HmacSHA256";
 
