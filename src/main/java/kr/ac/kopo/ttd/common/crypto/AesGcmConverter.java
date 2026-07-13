@@ -9,6 +9,7 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.util.Base64;
 
@@ -58,7 +59,7 @@ public class AesGcmConverter implements AttributeConverter<String, String> {
             System.arraycopy(iv, 0, result, 0, iv.length);
             System.arraycopy(cipherText, 0, result, iv.length, cipherText.length);
             return Base64.getEncoder().encodeToString(result);
-        } catch (Exception e) {
+        } catch (GeneralSecurityException e) {
             throw new IllegalStateException("AES-GCM 암호화에 실패했습니다.", e);
         }
     }
@@ -70,6 +71,9 @@ public class AesGcmConverter implements AttributeConverter<String, String> {
         }
         try {
             byte[] decoded = Base64.getDecoder().decode(dbData);
+            if (decoded.length <= IV_LENGTH_BYTES) {
+                throw new IllegalArgumentException("AES-GCM 암호문 형식이 올바르지 않습니다.");
+            }
             byte[] iv = new byte[IV_LENGTH_BYTES];
             byte[] cipherText = new byte[decoded.length - IV_LENGTH_BYTES];
             System.arraycopy(decoded, 0, iv, 0, IV_LENGTH_BYTES);
@@ -79,7 +83,7 @@ public class AesGcmConverter implements AttributeConverter<String, String> {
             cipher.init(Cipher.DECRYPT_MODE, secretKey, new GCMParameterSpec(TAG_LENGTH_BITS, iv));
             byte[] plainText = cipher.doFinal(cipherText);
             return new String(plainText, StandardCharsets.UTF_8);
-        } catch (Exception e) {
+        } catch (GeneralSecurityException | IllegalArgumentException e) {
             throw new IllegalStateException("AES-GCM 복호화에 실패했습니다.", e);
         }
     }
