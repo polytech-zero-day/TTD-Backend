@@ -20,6 +20,8 @@ import kr.ac.kopo.ttd.domain.MessageRole;
 import kr.ac.kopo.ttd.domain.ProblemType;
 import kr.ac.kopo.ttd.domain.RubricCriterion;
 import kr.ac.kopo.ttd.domain.SourceType;
+import kr.ac.kopo.ttd.domain.User;
+import kr.ac.kopo.ttd.domain.UserRole;
 import kr.ac.kopo.ttd.dto.AttemptMessageRequest;
 import kr.ac.kopo.ttd.dto.AttemptMessageResponse;
 import kr.ac.kopo.ttd.dto.AttemptResultResponse;
@@ -30,6 +32,7 @@ import kr.ac.kopo.ttd.grading.GradingProducer;
 import kr.ac.kopo.ttd.repository.AttemptMessageRepository;
 import kr.ac.kopo.ttd.repository.AttemptRepository;
 import kr.ac.kopo.ttd.repository.ProblemRepository;
+import kr.ac.kopo.ttd.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,6 +50,8 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -67,6 +72,9 @@ class AttemptServiceTest {
     private ProblemRepository problemRepository;
 
     @Mock
+    private UserRepository userRepository;
+
+    @Mock
     private AiClient aiClient;
 
     @Mock
@@ -82,9 +90,17 @@ class AttemptServiceTest {
 
     @BeforeEach
     void setUp() {
+        User user = User.builder()
+                .email("user@example.com")
+                .emailHash("hash")
+                .passwordHash("password")
+                .nickname("사용자")
+                .role(UserRole.USER)
+                .build();
+        lenient().when(userRepository.findByIdForUpdate(USER_ID)).thenReturn(Optional.of(user));
         // @Value 프리미티브 파라미터 때문에 @InjectMocks 대신 직접 생성한다
         attemptService = new AttemptService(
-                attemptRepository, messageRepository, problemRepository,
+                attemptRepository, messageRepository, problemRepository, userRepository,
                 aiClient, gradingProducer, subscriptionService, aiModelSettingService,
                 MESSAGE_LIMIT, TIME_LIMIT_MINUTES);
     }
@@ -181,6 +197,23 @@ class AttemptServiceTest {
 
         assertThat(response.status()).isEqualTo("IN_PROGRESS");
         verify(attemptRepository, never()).save(any());
+    }
+
+    @Test
+    void 응시_시작은_사용자_잠금_후_최신_세션을_조회한다() {
+        Problem problem = activeProblem();
+        Attempt existing = inProgressAttempt(problem);
+        given(problemRepository.findByIdAndStatus(1L, ProblemStatus.ACTIVE)).willReturn(Optional.of(problem));
+        given(attemptRepository.findFirstByUserIdAndProblemIdOrderByIdDesc(USER_ID, problem.getId()))
+                .willReturn(Optional.of(existing));
+        given(messageRepository.findByAttemptIdOrderByIdAsc(any())).willReturn(List.of());
+
+        attemptService.start(USER_ID, new AttemptStartRequest(1L));
+
+        var ordered = inOrder(userRepository, attemptRepository);
+        ordered.verify(userRepository).findByIdForUpdate(USER_ID);
+        ordered.verify(attemptRepository)
+                .findFirstByUserIdAndProblemIdOrderByIdDesc(USER_ID, problem.getId());
     }
 
     @Test
