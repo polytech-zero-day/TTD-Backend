@@ -9,6 +9,7 @@ import kr.ac.kopo.ttd.grading.GradingProducer;
 import kr.ac.kopo.ttd.repository.AttemptMessageRepository;
 import kr.ac.kopo.ttd.repository.AttemptRepository;
 import kr.ac.kopo.ttd.repository.ProblemRepository;
+import kr.ac.kopo.ttd.repository.UserRepository;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class AttemptService {
     private final AttemptRepository attemptRepository;
     private final AttemptMessageRepository messageRepository;
     private final ProblemRepository problemRepository;
+    private final UserRepository userRepository;
     private final AiClient aiClient;
     private final GradingProducer gradingProducer;
     private final SubscriptionService subscriptionService;
@@ -41,6 +43,7 @@ public class AttemptService {
             AttemptRepository attemptRepository,
             AttemptMessageRepository messageRepository,
             ProblemRepository problemRepository,
+            UserRepository userRepository,
             AiClient aiClient,
             GradingProducer gradingProducer,
             SubscriptionService subscriptionService,
@@ -50,6 +53,7 @@ public class AttemptService {
         this.attemptRepository = attemptRepository;
         this.messageRepository = messageRepository;
         this.problemRepository = problemRepository;
+        this.userRepository = userRepository;
         this.aiClient = aiClient;
         this.gradingProducer = gradingProducer;
         this.subscriptionService = subscriptionService;
@@ -67,6 +71,9 @@ public class AttemptService {
     public AttemptSnapshotResponse start(Long userId, AttemptStartRequest request) {
         Problem problem = problemRepository.findByIdAndStatus(request.problemId(), ProblemStatus.ACTIVE)
                 .orElseThrow(ProblemNotFoundException::new);
+
+        // 동일 사용자의 시작 요청을 직렬화해 최신 응시 조회와 신규 생성 사이의 레이스를 막는다.
+        userRepository.findByIdForUpdate(userId).orElseThrow(UserNotFoundException::new);
 
         Attempt latest = attemptRepository
                 .findFirstByUserIdAndProblemIdOrderByIdDesc(userId, problem.getId())
