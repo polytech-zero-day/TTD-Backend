@@ -62,6 +62,12 @@ app:
     email: ${ADMIN_INIT_EMAIL:admin@ttd.local}
     password: ${ADMIN_INIT_PASSWORD:}
     nickname: ${ADMIN_INIT_NICKNAME:admin}
+  demo-seed:
+    # 데모 데이터가 필요한 배포에서만 true로 켠다. 기본값은 false다.
+    enabled: ${DEMO_SEED_ENABLED:false}
+    login-email: ${DEMO_LOGIN_EMAIL:}
+    login-password: ${DEMO_LOGIN_PASSWORD:}
+    login-nickname: ${DEMO_LOGIN_NICKNAME:}
   auth:
     refresh-cookie-secure: ${AUTH_REFRESH_COOKIE_SECURE:true}
     # 프론트·백엔드가 다른 도메인인 운영에서는 None으로(+secure=true). 같은 도메인/로컬은 Lax.
