@@ -130,7 +130,15 @@ class RubricGraderTest {
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<Message>> captor = ArgumentCaptor.forClass(List.class);
-        verify(aiClient).chatJson(anyString(), captor.capture(), any());
+        ArgumentCaptor<String> systemPrompt = ArgumentCaptor.forClass(String.class);
+        verify(aiClient).chatJson(systemPrompt.capture(), captor.capture(), any());
+        assertThat(systemPrompt.getValue())
+                .contains("AI 활용 과정의 타당성(30)")
+                .contains("대화 이력의 USER")
+                .contains("응시자의 행동만 평가")
+                .contains("실질적인 추가 지시·결과 검증·수정 요청")
+                .contains("③은 최대 10점")
+                .contains("메시지 수, 토큰 수, 장황함 자체는 역량의 근거가 아닙니다");
         String userPrompt = captor.getValue().get(0).getText();
         assertThat(userPrompt)
                 .contains("[DATA: 응시자 최종 결과물]")
