@@ -4,6 +4,7 @@ import kr.ac.kopo.ttd.domain.Attempt;
 import kr.ac.kopo.ttd.domain.AttemptMessage;
 import kr.ac.kopo.ttd.domain.Problem;
 import kr.ac.kopo.ttd.domain.RubricCriterion;
+import kr.ac.kopo.ttd.grading.GradingIntegrityAnalyzer;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,15 +23,23 @@ public record AttemptResultResponse(
         List<ChatMessageResponse> messages,
         long totalTokens, long tokenBudget,
         boolean premium, String chatModel,
+        String gradingConfidence, List<String> gradingFlags,
         String artifact) {
 
     public AttemptResultResponse {
         criteria = criteria == null ? null : List.copyOf(criteria);
         messages = messages == null ? null : List.copyOf(messages);
+        gradingFlags = gradingFlags == null ? List.of() : List.copyOf(gradingFlags);
     }
 
     public static AttemptResultResponse of(Attempt a, List<AttemptMessage> messages, int attemptOrdinal, String chatModel) {
         Problem problem = a.getProblem();
+        boolean integrityPolicyApplied = a.getRubricDetail() != null
+                && a.getRubricDetail().stream()
+                .anyMatch(criterion -> "AI 활용 과정의 타당성".equals(criterion.name()));
+        GradingIntegrityAnalyzer.Assessment assessment = integrityPolicyApplied
+                ? GradingIntegrityAnalyzer.assess(problem, a.getArtifact(), messages)
+                : null;
         return new AttemptResultResponse(
                 a.getId(), a.getStatus().name(),
                 problem.getTitle(), problem.getDifficulty().name(),
@@ -41,6 +50,8 @@ public record AttemptResultResponse(
                 messages.stream().map(ChatMessageResponse::from).toList(),
                 a.getTotalTokens(), problem.getTokenBudget(),
                 a.isPremium(), chatModel,
+                assessment == null ? null : assessment.confidence(),
+                assessment == null ? List.of() : assessment.flags(),
                 a.getArtifact());
     }
 }

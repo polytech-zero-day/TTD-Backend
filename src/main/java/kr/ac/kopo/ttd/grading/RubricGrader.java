@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -21,6 +22,13 @@ import java.util.stream.Collectors;
 @Component
 @RequiredArgsConstructor
 public class RubricGrader {
+
+    private static final List<String> GRADING_CRITERION_NAMES = List.of(
+            "요구사항 충족", "근거 제시의 구체성", "AI 활용 과정의 타당성");
+    private static final List<Integer> GRADING_CRITERION_MAX_SCORES = List.of(40, 30, 30);
+    private static final List<String> CALIBRATION_CRITERION_NAMES = List.of(
+            "요구사항·제약 조건 반영", "출력·구현 지시의 구체성", "모호성 및 요구사항 위반 방지");
+    private static final List<Integer> CALIBRATION_CRITERION_MAX_SCORES = List.of(50, 30, 20);
 
     private static final String GRADING_SYSTEM_PROMPT = """
             당신은 AI 활용 역량 평가의 채점관입니다. 최종 결과물과 응시자-AI 대화 이력을 함께
@@ -46,7 +54,8 @@ public class RubricGrader {
             {"score": <0-100 정수>, "feedback": "<한국어 2~3문장 총평>",
              "criteria": [{"name": "<루브릭 항목명>", "score": <획득 점수 정수>,
                            "maxScore": <해당 항목 배점>, "comment": "<한국어 1~2문장 근거>"}]}
-            criteria는 루브릭 항목 순서대로 3개를 모두 포함하고, 항목 score의 합이 전체 score와 일치해야 합니다.""";
+            criteria는 루브릭 항목 순서대로 3개를 모두 포함하고, name은 위 루브릭 항목명과
+            정확히 동일해야 하며, 항목 score의 합이 전체 score와 일치해야 합니다.""";
 
     /**
      * 캘리브레이션 표본은 실제 실행 결과가 아니라 응시자가 AI에 전달한 프롬프트다.
@@ -78,7 +87,8 @@ public class RubricGrader {
             {"score": <0-100 정수>, "feedback": "<한국어 2~3문장 총평>",
              "criteria": [{"name": "<루브릭 항목명>", "score": <획득 점수 정수>,
                            "maxScore": <해당 항목 배점>, "comment": "<한국어 1~2문장 근거>"}]}
-            criteria는 루브릭 항목 순서대로 3개를 모두 포함하고, 항목 score의 합이 전체 score와 일치해야 합니다.""";
+            criteria는 루브릭 항목 순서대로 3개를 모두 포함하고, name은 위 루브릭 항목명과
+            정확히 동일해야 하며, 항목 score의 합이 전체 score와 일치해야 합니다.""";
 
     private final AiClient aiClient;
     private final ObjectMapper objectMapper;
@@ -96,42 +106,93 @@ public class RubricGrader {
                 .collect(Collectors.joining("\n"));
 
         String userPrompt = buildGradingPrompt(problem, artifact, conversation, "응시자 최종 결과물");
-
-        return requestGrade(GRADING_SYSTEM_PROMPT, userPrompt);
+        RubricResult result = requestGrade(
+                GRADING_SYSTEM_PROMPT, userPrompt,
+                GRADING_CRITERION_NAMES, GRADING_CRITERION_MAX_SCORES);
+        GradingIntegrityAnalyzer.Assessment assessment =
+                GradingIntegrityAnalyzer.assess(problem, artifact, history);
+        return applyProcessScoreCap(result, assessment.processScoreCap());
     }
 
     public RubricResult gradeCalibration(Problem problem, String samplePrompt) {
         String userPrompt = buildGradingPrompt(problem, samplePrompt, "", "캘리브레이션 응시 프롬프트");
-        return requestGrade(CALIBRATION_SYSTEM_PROMPT, userPrompt);
+        return requestGrade(
+                CALIBRATION_SYSTEM_PROMPT, userPrompt,
+                CALIBRATION_CRITERION_NAMES, CALIBRATION_CRITERION_MAX_SCORES);
     }
 
     private String buildGradingPrompt(Problem problem, String artifact, String conversation, String artifactLabel) {
-        return """
-                문제 제목: %s
-                문제 설명: %s
-                문제 요구사항: %s
-                제약 조건: %s
-                기초 코드: %s
-
-                [DATA: %s]
-                %s
-                [/DATA]
-
-                [DATA: 응시자-AI 대화 이력]
-                %s
-                [/DATA]""".formatted(
+        String template = "문제 제목: %s%n"
+                + "문제 설명: %s%n"
+                + "문제 요구사항: %s%n"
+                + "제약 조건: %s%n"
+                + "기초 코드: %s%n%n"
+                + "[DATA: %s]%n"
+                + "%s%n"
+                + "[/DATA]%n%n"
+                + "[DATA: 응시자-AI 대화 이력]%n"
+                + "%s%n"
+                + "[/DATA]";
+        return template.formatted(
                 problem.getTitle(), problem.getDescription(), String.join(" / ", problem.getRequirements()),
                 String.join(" / ", problem.getConstraints()), problem.getSkeletonCode() == null ? "(없음)" : problem.getSkeletonCode(),
                 artifactLabel, artifact == null ? "(빈 제출)" : neutralizeDelimiters(artifact), conversation);
     }
 
-    private RubricResult requestGrade(String systemPrompt, String userPrompt) {
+    private RubricResult requestGrade(String systemPrompt, String userPrompt,
+                                      List<String> expectedNames, List<Integer> expectedMaxScores) {
         AiChatResult result = aiClient.chatJson(systemPrompt, List.of(AiClient.user(userPrompt)), AiPurpose.GRADING);
         try {
-            return objectMapper.readValue(extractJson(result.content()), RubricResult.class);
+            RubricResult parsed = objectMapper.readValue(extractJson(result.content()), RubricResult.class);
+            validateResult(parsed, expectedNames, expectedMaxScores);
+            return parsed;
         } catch (Exception e) {
-            throw new IllegalStateException("루브릭 채점 응답 파싱에 실패했습니다: " + result.content(), e);
+            throw new IllegalStateException("루브릭 채점 응답 파싱 또는 검증에 실패했습니다.", e);
         }
+    }
+
+    /** 모델의 지시 준수에만 의존하지 않고 점수 범위·배점·합계를 서버에서 강제한다. */
+    private void validateResult(RubricResult result, List<String> expectedNames, List<Integer> expectedMaxScores) {
+        if (result == null || result.score() < 0 || result.score() > 100
+                || result.feedback() == null || result.feedback().isBlank()
+                || result.criteria() == null || result.criteria().size() != expectedNames.size()) {
+            throw new IllegalArgumentException("채점 결과 필수값 또는 범위가 올바르지 않습니다.");
+        }
+
+        int sum = 0;
+        for (int index = 0; index < result.criteria().size(); index++) {
+            RubricCriterion criterion = result.criteria().get(index);
+            int expectedMaxScore = expectedMaxScores.get(index);
+            if (criterion == null
+                    || !Objects.equals(criterion.name(), expectedNames.get(index))
+                    || criterion.maxScore() != expectedMaxScore
+                    || criterion.score() < 0 || criterion.score() > expectedMaxScore
+                    || criterion.comment() == null || criterion.comment().isBlank()) {
+                throw new IllegalArgumentException("채점 항목의 이름·배점·근거가 올바르지 않습니다.");
+            }
+            sum += criterion.score();
+        }
+        if (sum != result.score()) {
+            throw new IllegalArgumentException("채점 항목 합계와 총점이 일치하지 않습니다.");
+        }
+    }
+
+    /** 저관여·채점 조작 신호가 있으면 AI 활용 과정 점수 상한을 코드에서 강제한다. */
+    private RubricResult applyProcessScoreCap(RubricResult result, int processScoreCap) {
+        RubricCriterion process = result.criteria().get(2);
+        if (process.score() <= processScoreCap) {
+            return result;
+        }
+
+        RubricCriterion capped = new RubricCriterion(
+                process.name(), processScoreCap, process.maxScore(),
+                process.comment() + " 서버의 채점 무결성 정책에 따라 AI 활용 과정 점수 상한을 적용했습니다.");
+        List<RubricCriterion> adjustedCriteria = List.of(
+                result.criteria().get(0), result.criteria().get(1), capped);
+        int adjustedScore = adjustedCriteria.stream().mapToInt(RubricCriterion::score).sum();
+        String adjustedFeedback = result.feedback()
+                + " AI 활용 과정은 서버의 채점 무결성 정책에 따라 제한 평가되었습니다.";
+        return new RubricResult(adjustedScore, adjustedFeedback, adjustedCriteria);
     }
 
     /**
