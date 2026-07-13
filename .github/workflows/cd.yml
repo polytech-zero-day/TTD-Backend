@@ -14,6 +14,7 @@ permissions:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: polytech-zero-day/ttd-backend
+  SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
 
 jobs:
   build-and-push:
@@ -38,7 +39,9 @@ jobs:
 
       - name: Resolve image tag
         id: meta
-        run: echo "tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+        # workflow_run에서는 GITHUB_SHA가 기본 브랜치 SHA일 수 있으므로,
+        # CI를 실제로 통과시킨 커밋 SHA를 이미지 태그와 배포 기준으로 사용한다.
+        run: echo "tag=${SOURCE_SHA::12}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image
         uses: docker/build-push-action@v6
@@ -73,5 +76,5 @@ jobs:
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_ACTOR" --password-stdin
             export IMAGE_TAG="$IMAGE_TAG"
             docker compose -f docker-compose.prod.yml pull backend
-            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml up -d --force-recreate backend
             docker image prune -f
