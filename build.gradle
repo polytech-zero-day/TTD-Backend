@@ -65,6 +65,7 @@ spotbugs {
 	ignoreFailures = true
 	effort = com.github.spotbugs.snom.Effort.valueOf('MAX')
 	reportLevel = com.github.spotbugs.snom.Confidence.valueOf('LOW')
+	excludeFilter = file('config/spotbugs-exclude.xml')
 }
 
 tasks.withType(com.github.spotbugs.snom.SpotBugsTask).configureEach {
