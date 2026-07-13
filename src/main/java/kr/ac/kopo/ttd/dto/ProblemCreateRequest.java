@@ -22,4 +22,9 @@ public record ProblemCreateRequest(
         String skeletonCode,
         @Min(1) Integer maxAttempts
 ) {
+
+    public ProblemCreateRequest {
+        requirements = requirements == null ? null : List.copyOf(requirements);
+        constraints = constraints == null ? null : List.copyOf(constraints);
+    }
 }

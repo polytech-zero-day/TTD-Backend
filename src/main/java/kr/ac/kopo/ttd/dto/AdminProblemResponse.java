@@ -28,6 +28,11 @@ public record AdminProblemResponse(
         LocalDateTime updatedAt
 ) {
 
+    public AdminProblemResponse {
+        requirements = requirements == null ? null : List.copyOf(requirements);
+        constraints = constraints == null ? null : List.copyOf(constraints);
+    }
+
     public static AdminProblemResponse from(Problem problem) {
         return new AdminProblemResponse(
                 problem.getId(),

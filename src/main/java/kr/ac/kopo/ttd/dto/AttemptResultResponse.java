@@ -24,6 +24,11 @@ public record AttemptResultResponse(
         boolean premium, String chatModel,
         String artifact) {
 
+    public AttemptResultResponse {
+        criteria = criteria == null ? null : List.copyOf(criteria);
+        messages = messages == null ? null : List.copyOf(messages);
+    }
+
     public static AttemptResultResponse of(Attempt a, List<AttemptMessage> messages, int attemptOrdinal, String chatModel) {
         Problem problem = a.getProblem();
         return new AttemptResultResponse(

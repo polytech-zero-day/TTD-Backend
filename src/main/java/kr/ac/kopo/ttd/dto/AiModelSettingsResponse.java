@@ -9,4 +9,9 @@ import java.util.List;
 public record AiModelSettingsResponse(
         List<AiModelSettingResponse> settings,
         List<String> availableModels) {
+
+    public AiModelSettingsResponse {
+        settings = settings == null ? null : List.copyOf(settings);
+        availableModels = availableModels == null ? null : List.copyOf(availableModels);
+    }
 }

@@ -23,6 +23,11 @@ public record ProblemResponse(
         String skeletonCode
 ) {
 
+    public ProblemResponse {
+        requirements = requirements == null ? null : List.copyOf(requirements);
+        constraints = constraints == null ? null : List.copyOf(constraints);
+    }
+
     public static ProblemResponse from(Problem problem) {
         return new ProblemResponse(
                 problem.getId(),

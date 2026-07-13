@@ -35,7 +35,8 @@ public class SubscriptionBillingScheduler {
             try {
                 subscriptionService.chargeSingleSubscription(subscriptionId);
             } catch (Exception e) {
-                log.error("구독 재결제 처리 중 오류: subscriptionId={}", subscriptionId, e);
+                log.error("구독 재결제 처리 중 오류: subscriptionId={}, errorType={}",
+                        subscriptionId, e.getClass().getSimpleName());
             }
         }
     }
