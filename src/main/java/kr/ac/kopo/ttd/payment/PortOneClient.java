@@ -70,8 +70,9 @@ public class PortOneClient {
                     .body(PortOnePaymentApiResponse.class);
             return toResult(response, amountKrw);
         } catch (RestClientException e) {
-            log.warn("PortOne 빌링키 결제 요청 실패: paymentId={}", paymentId, e);
-            return PortOnePaymentResult.failed("PORTONE_API_ERROR: " + e.getMessage());
+            log.warn("PortOne 빌링키 결제 요청 실패: paymentId={}, errorType={}",
+                    paymentId, e.getClass().getSimpleName());
+            return PortOnePaymentResult.failed("PORTONE_API_ERROR");
         }
     }
 
@@ -83,7 +84,8 @@ public class PortOneClient {
         try {
             restClient.delete().uri("/billing-keys/{billingKey}", billingKey).retrieve().toBodilessEntity();
         } catch (RestClientException e) {
-            log.warn("PortOne 빌링키 삭제 실패(구독 취소 자체는 계속 진행): billingKey 삭제만 실패, 로컬 구독은 정상 취소됨", e);
+            log.warn("PortOne 빌링키 삭제 실패(구독 취소 자체는 계속 진행): errorType={}",
+                    e.getClass().getSimpleName());
         }
     }
 

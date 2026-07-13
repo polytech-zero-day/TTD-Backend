@@ -3,6 +3,8 @@ package kr.ac.kopo.ttd.domain;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
+import java.util.Locale;
+
 /**
  * 문제 상태. 전환 규칙: draft ─▶ pending ─▶ active, pending ─(반려)▶ draft.
  * JSON 직렬화/역직렬화는 소문자(draft/pending/active)로 처리하여 프론트 계약과 일치시킨다.
@@ -14,12 +16,12 @@ public enum ProblemStatus {
 
     @JsonValue
     public String toJson() {
-        return name().toLowerCase();
+        return name().toLowerCase(Locale.ROOT);
     }
 
     @JsonCreator
     public static ProblemStatus fromJson(String value) {
-        return ProblemStatus.valueOf(value.toUpperCase());
+        return ProblemStatus.valueOf(value.toUpperCase(Locale.ROOT));
     }
 
     public boolean canTransitionTo(ProblemStatus target) {

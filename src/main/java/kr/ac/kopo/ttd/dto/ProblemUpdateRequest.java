@@ -22,4 +22,9 @@ public record ProblemUpdateRequest(
         String skeletonCode,
         @NotNull @Min(1) Integer maxAttempts
 ) {
+
+    public ProblemUpdateRequest {
+        requirements = requirements == null ? null : List.copyOf(requirements);
+        constraints = constraints == null ? null : List.copyOf(constraints);
+    }
 }

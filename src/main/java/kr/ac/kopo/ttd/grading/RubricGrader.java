@@ -72,7 +72,12 @@ public class RubricGrader {
     private final AiClient aiClient;
     private final ObjectMapper objectMapper;
 
-    public record RubricResult(int score, String feedback, List<RubricCriterion> criteria) {}
+    public record RubricResult(int score, String feedback, List<RubricCriterion> criteria) {
+
+        public RubricResult {
+            criteria = criteria == null ? null : List.copyOf(criteria);
+        }
+    }
 
     public RubricResult grade(Problem problem, String artifact, List<AttemptMessage> history) {
         String conversation = history.stream()

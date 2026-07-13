@@ -14,6 +14,10 @@ public record CalibrationRunResponse(
         List<Row> rows
 ) {
 
+    public CalibrationRunResponse {
+        rows = rows == null ? null : List.copyOf(rows);
+    }
+
     public record Config(int highMin, int midMin, int tolerance) {}
 
     public record Summary(

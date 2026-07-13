@@ -56,7 +56,8 @@ public class CalibrationRunner {
                     placeholder, null);
         } catch (Exception e) {
             // 한 샘플의 실패가 전체 측정을 중단시키지 않는다
-            log.warn("캘리브레이션 채점 실패: sampleId={}", sample.getId(), e);
+            log.warn("캘리브레이션 채점 실패: sampleId={}, errorType={}",
+                    sample.getId(), e.getClass().getSimpleName());
             return new CalibrationRunResponse.Row(
                     sample.getId(), sample.getProblem().getTitle(),
                     sample.getTier(), sample.getReferenceScore(),

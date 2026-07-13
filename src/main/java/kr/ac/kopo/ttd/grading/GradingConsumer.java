@@ -56,7 +56,8 @@ public class GradingConsumer {
             attemptId = Long.valueOf(attemptIdPayload);
             gradeInTransaction(attemptId); // 여기서 커밋까지 동기적으로 완료된다
         } catch (Exception e) {
-            log.error("채점 최종 실패: payload={}", attemptIdPayload, e);
+            log.error("채점 최종 실패: attemptId={}, errorType={}",
+                    attemptId, e.getClass().getSimpleName());
             markFailed(attemptId); // 별도 트랜잭션으로 GRADING_FAILED 확정
         } finally {
             channel.basicAck(deliveryTag, false); // 커밋 이후에만 소비 확정
@@ -96,7 +97,8 @@ public class GradingConsumer {
                         messageRepository.findByAttemptIdOrderByIdAsc(attemptId));
             } catch (RuntimeException e) {
                 last = e;
-                log.warn("채점 시도 {}회차 실패: attemptId={}", tried, attemptId, e);
+                log.warn("채점 시도 {}회차 실패: attemptId={}, errorType={}",
+                        tried, attemptId, e.getClass().getSimpleName());
             }
         }
         throw last;

@@ -10,4 +10,9 @@ public record AttemptSnapshotResponse(
         AttemptUsageResponse usage,
         List<ChatMessageResponse> messages,
         String draft,
-        String chatModel) {}
+        String chatModel) {
+
+    public AttemptSnapshotResponse {
+        messages = messages == null ? null : List.copyOf(messages);
+    }
+}
