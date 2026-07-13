@@ -118,6 +118,20 @@ class AttemptServiceTest {
                 .build();
     }
 
+    private Problem skeletonProblem() {
+        return Problem.builder()
+                .title("최소 HTTP 서버에 라우팅 추가")
+                .difficulty(Difficulty.L1)
+                .type(ProblemType.SKELETON_HTTP)
+                .sourceType(SourceType.AUTO_GRADED)
+                .description("설명")
+                .requirements(List.of("요구사항1"))
+                .constraints(List.of("제약1"))
+                .skeletonCode("print(\"Hello World\")")
+                .maxAttempts(3)
+                .build();
+    }
+
     // ── 시작 ──────────────────────────────────────────────
 
     @Test
@@ -137,6 +151,21 @@ class AttemptServiceTest {
         assertThat(response.usage().messagesUsed()).isZero();
         assertThat(response.usage().messagesLimit()).isEqualTo(MESSAGE_LIMIT);
         assertThat(response.usage().tokensBaseline()).isEqualTo(TOKEN_BASELINE);
+    }
+
+    @Test
+    void 스켈레톤_문제는_기초_코드를_draft로_제공한다() {
+        Problem problem = skeletonProblem();
+        given(problemRepository.findByIdAndStatus(1L, ProblemStatus.ACTIVE)).willReturn(Optional.of(problem));
+        given(attemptRepository.findFirstByUserIdAndProblemIdOrderByIdDesc(USER_ID, problem.getId()))
+                .willReturn(Optional.empty());
+        given(attemptRepository.countByUserIdAndProblemId(USER_ID, problem.getId())).willReturn(0L);
+        given(attemptRepository.save(any(Attempt.class))).willAnswer(invocation -> invocation.getArgument(0));
+        given(messageRepository.findByAttemptIdOrderByIdAsc(any())).willReturn(List.of());
+
+        AttemptSnapshotResponse response = attemptService.start(USER_ID, new AttemptStartRequest(1L));
+
+        assertThat(response.draft()).isEqualTo(problem.getSkeletonCode());
     }
 
     @Test

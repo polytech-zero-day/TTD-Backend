@@ -93,6 +93,7 @@ public class AttemptService {
                 .endsAt(LocalDateTime.now().plusMinutes(timeLimitMinutes))
                 .premium(premium)
                 .chatModel(chatModel)
+                .draft(problem.getSkeletonCode())
                 .build());
         return toSnapshot(attempt);
     }
