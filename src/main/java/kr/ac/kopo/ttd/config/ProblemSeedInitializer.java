@@ -20,6 +20,7 @@ import kr.ac.kopo.ttd.repository.TestCaseRepository;
 import kr.ac.kopo.ttd.service.ProblemService;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -36,6 +37,7 @@ import java.util.List;
  * 채워, 문제별 예시 입출력이 플레이스홀더 없이 일관되게 제공된다.
  */
 @Component
+@Order(1) // 데모 시딩(DemoDataSeedInitializer, @Order(2))보다 먼저 실행되어 문제가 존재하도록 보장한다.
 public class ProblemSeedInitializer implements ApplicationRunner {
 
     private static final int MAX_ATTEMPTS = 3;
