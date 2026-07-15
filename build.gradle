@@ -62,7 +62,7 @@ tasks.named('test') {
 }
 
 spotbugs {
-	ignoreFailures = true
+	ignoreFailures = false
 	effort = com.github.spotbugs.snom.Effort.valueOf('MAX')
 	reportLevel = com.github.spotbugs.snom.Confidence.valueOf('LOW')
 	excludeFilter = file('config/spotbugs-exclude.xml')
